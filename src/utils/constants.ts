@@ -1,5 +1,46 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-export const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000/ws'
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/$/, '')
+}
+
+function upgradeWsForHttpsPage(url: string): string {
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    url.startsWith('ws://')
+  ) {
+    return `wss://${url.slice('ws://'.length)}`
+  }
+  return url
+}
+
+function resolveApiBaseUrl(): string {
+  const env = import.meta.env.VITE_API_BASE_URL
+  if (env != null && env !== '') {
+    return stripTrailingSlash(env)
+  }
+  if (import.meta.env.DEV) {
+    return ''
+  }
+  return 'http://localhost:8000'
+}
+
+function resolveWsUrl(apiBaseUrl: string): string {
+  const explicit = import.meta.env.VITE_WS_URL
+  if (explicit != null && explicit !== '') {
+    return upgradeWsForHttpsPage(explicit)
+  }
+  if (import.meta.env.DEV && !apiBaseUrl) {
+    return 'ws://localhost:5173/ws'
+  }
+  if (apiBaseUrl) {
+    const wsBase = apiBaseUrl.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
+    return `${stripTrailingSlash(wsBase)}/ws`
+  }
+  return 'ws://localhost:8000/ws'
+}
+
+export const API_BASE_URL = resolveApiBaseUrl()
+export const WS_URL = resolveWsUrl(API_BASE_URL)
 export const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Tradin'
 
 export const TIMEFRAMES = ['1m', '5m', '15m', '1H', '4H', '1D', '1W', '1M'] as const
