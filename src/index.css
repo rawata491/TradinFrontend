@@ -1,0 +1,374 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME VARIABLES
+   ─────────────────────────────────────────────────────────────────────────
+   The dark-* scale is driven by CSS custom properties so every existing
+   bg-dark-*, text-dark-*, border-dark-* utility class adapts to both
+   themes without touching component files.
+
+   DARK  → original slate scale (deep navy → bright white)
+   LIGHT → purpose-built light scale (pure black text → white card surface)
+
+   Critical light-mode design decisions:
+     • dark-950  = page background  (#f1f5f9  — slate-100, not raw white)
+     • dark-900  = card surface     (#ffffff  — pure white, stands out)
+     • dark-800  = dividers/borders (#e2e8f0  — slate-200)
+     • dark-700  = hover borders    (#d1d5db  — slightly darker than normal)
+     • dark-600  = disabled / placeholder (#94a3b8)
+     • dark-400  = secondary text   (#64748b)
+     • dark-50   = primary text     (#0f172a  — near-black)
+   Cards stand above the background via box-shadow, not by background colour.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Light mode ──────────────────────────────────────────────────────── */
+  --tw-dark-50:  15  23  42;     /* #0f172a – primary text      */
+  --tw-dark-100: 30  41  59;     /* #1e293b – strong text       */
+  --tw-dark-200: 51  65  85;     /* #334155 – body text         */
+  --tw-dark-300: 71  85  105;    /* #475569 – secondary text    */
+  --tw-dark-400: 100 116 139;    /* #64748b – muted text        */
+  --tw-dark-500: 148 163 184;    /* #94a3b8 – very muted        */
+  --tw-dark-600: 186 199 215;    /* #bac7d7 – placeholder       */
+  --tw-dark-700: 209 213 219;    /* #d1d5db – hover border      */
+  --tw-dark-800: 226 232 240;    /* #e2e8f0 – borders           */
+  --tw-dark-900: 255 255 255;    /* #ffffff – card surface      */
+  --tw-dark-950: 241 245 249;    /* #f1f5f9 – page background   */
+
+  /* Shadow system for light mode */
+  --shadow-card:        0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-card-hover:  0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-navbar:      0 1px 3px rgba(0,0,0,0.08);
+  --shadow-dropdown:    0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+
+  color-scheme: light;
+}
+
+.dark {
+  /* ── Dark mode ───────────────────────────────────────────────────────── */
+  --tw-dark-50:  248 250 252;    /* #f8fafc */
+  --tw-dark-100: 241 245 249;    /* #f1f5f9 */
+  --tw-dark-200: 226 232 240;    /* #e2e8f0 */
+  --tw-dark-300: 203 213 225;    /* #cbd5e1 */
+  --tw-dark-400: 148 163 184;    /* #94a3b8 */
+  --tw-dark-500: 100 116 139;    /* #64748b */
+  --tw-dark-600: 71  85  105;    /* #475569 */
+  --tw-dark-700: 51  65  85;     /* #334155 */
+  --tw-dark-800: 30  41  59;     /* #1e293b */
+  --tw-dark-900: 15  23  42;     /* #0f172a */
+  --tw-dark-950: 2   6   23;     /* #020617 */
+
+  /* No elevation shadows in dark mode (darkness itself provides depth) */
+  --shadow-card:       none;
+  --shadow-card-hover: none;
+  --shadow-navbar:     none;
+  --shadow-dropdown:   none;
+
+  color-scheme: dark;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-dark-950 font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  /* Dark mode body — deep radial gradient */
+  html.dark body {
+    background-image: radial-gradient(ellipse at top, #0f172a 0%, #020617 100%);
+  }
+
+  /* Light mode body — clean light slate with a barely-there blue tint at top */
+  html:not(.dark) body {
+    background-image: radial-gradient(ellipse at top, #e8edf5 0%, #f1f5f9 60%);
+  }
+
+  /* ── text-white fix ──────────────────────────────────────────────────────
+   * In dark mode, text-white is literal white — correct.
+   * In light mode, any text-white (static or hover) used for body copy must
+   * become near-black so text is readable on white / light-gray surfaces.
+   * Exceptions: btn-primary and elements with an explicit inline background
+   * (CoinAvatar circles) keep their white text via style= overrides.
+   * ─────────────────────────────────────────────────────────────────────── */
+  html:not(.dark) .text-white {
+    color: rgb(var(--tw-dark-50));
+  }
+  /* hover:text-white generated selector in light mode */
+  html:not(.dark) .hover\:text-white:hover {
+    color: rgb(var(--tw-dark-50));
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar       { @apply w-1.5 h-1.5; }
+  ::-webkit-scrollbar-track { background: rgb(var(--tw-dark-900)); }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--tw-dark-700));
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--tw-dark-600)); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer components {
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .card {
+    @apply bg-dark-900 border border-dark-800 rounded-xl;
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200;
+    cursor: pointer;
+  }
+
+  /* Dark mode hover: darken background & lighten border */
+  html.dark .card-hover:hover {
+    @apply border-dark-700 bg-dark-800/50;
+  }
+
+  /* Light mode hover: raise card with shadow & darken border */
+  html:not(.dark) .card-hover:hover {
+    border-color: rgb(var(--tw-dark-700));
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-500 font-medium px-4 py-2 rounded-lg
+           transition-colors duration-150 focus:outline-none focus:ring-2
+           focus:ring-brand-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    color: #ffffff !important;   /* always white, regardless of theme */
+  }
+
+  .btn-ghost {
+    @apply text-dark-400 hover:text-dark-50 hover:bg-dark-800
+           font-medium px-3 py-1.5 rounded-lg
+           transition-colors duration-150 focus:outline-none;
+  }
+
+  /* Light mode btn-ghost tweak: hover bg is more visible */
+  html:not(.dark) .btn-ghost:hover {
+    background: rgb(var(--tw-dark-800));
+    color: rgb(var(--tw-dark-50));
+  }
+
+  /* ── Badges ─────────────────────────────────────────────────────────────── */
+  .badge-positive {
+    @apply text-positive bg-positive/10 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  .badge-negative {
+    @apply text-negative bg-negative/10 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  /* ── Type helpers ───────────────────────────────────────────────────────── */
+  .stat-label {
+    @apply text-xs text-dark-400 font-medium uppercase tracking-wider;
+  }
+
+  .stat-value {
+    @apply text-dark-50 font-semibold font-mono;
+  }
+
+  /* ── Price flash animations ─────────────────────────────────────────────── */
+  .price-flash-up   { animation: priceUp   0.6s ease-in-out; }
+  .price-flash-down { animation: priceDown 0.6s ease-in-out; }
+
+  /* ── Skeleton loader ────────────────────────────────────────────────────── */
+  .skeleton {
+    background: rgb(var(--tw-dark-800));
+    @apply animate-pulse rounded;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT-MODE SPECIFIC OVERRIDES
+   (applies to structural chrome, not layout components)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Navbar elevation in light mode */
+html:not(.dark) header {
+  box-shadow: var(--shadow-navbar);
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-bottom-color: rgb(var(--tw-dark-800)) !important;
+}
+
+/* Dropdowns / search popover get a proper shadow in light mode */
+html:not(.dark) [class*='shadow-2xl'] {
+  box-shadow: var(--shadow-dropdown);
+}
+
+/* Table row hover — subtle in light mode */
+html:not(.dark) .hover\:bg-dark-800\/30:hover {
+  background-color: rgb(var(--tw-dark-800) / 0.4) !important;
+}
+
+/* Dividers look right in light mode */
+html:not(.dark) .divide-dark-800\/50 > * + * {
+  border-color: rgb(var(--tw-dark-800) / 0.7);
+}
+
+/* Scrollbar track in light mode */
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: rgb(var(--tw-dark-950));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL LIGHT-MODE UTILITY OVERRIDES
+   ─────────────────────────────────────────────────────────────────────────
+   Tailwind compiles bg-dark-*, text-dark-*, border-dark-* to hardcoded dark
+   RGB values. These overrides remap every dark-* utility to its correct
+   light-mode equivalent so ALL pages (watchlist, dashboard, coin, strategy)
+   render properly without touching component files.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Background colours ──────────────────────────────────────────────────── */
+html:not(.dark) .bg-dark-950      { background-color: #f1f5f9 !important; }
+html:not(.dark) .bg-dark-950\/90  { background-color: rgba(241,245,249,0.9) !important; }
+html:not(.dark) .bg-dark-900      { background-color: #ffffff !important; }
+html:not(.dark) .bg-dark-900\/70  { background-color: rgba(255,255,255,0.85) !important; }
+html:not(.dark) .bg-dark-900\/60  { background-color: rgba(255,255,255,0.85) !important; }
+html:not(.dark) .bg-dark-900\/40  { background-color: rgba(255,255,255,0.6)  !important; }
+html:not(.dark) .bg-dark-800      { background-color: #e2e8f0 !important; }
+html:not(.dark) .bg-dark-800\/60  { background-color: rgba(226,232,240,0.7)  !important; }
+html:not(.dark) .bg-dark-800\/40  { background-color: rgba(226,232,240,0.5)  !important; }
+html:not(.dark) .bg-dark-800\/30  { background-color: rgba(226,232,240,0.4)  !important; }
+html:not(.dark) .bg-dark-700      { background-color: #d1d5db !important; }
+
+/* ── Text colours ────────────────────────────────────────────────────────── */
+html:not(.dark) .text-dark-50  { color: #0f172a !important; }
+html:not(.dark) .text-dark-100 { color: #1e293b !important; }
+html:not(.dark) .text-dark-200 { color: #334155 !important; }
+html:not(.dark) .text-dark-300 { color: #475569 !important; }
+html:not(.dark) .text-dark-400 { color: #64748b !important; }
+html:not(.dark) .text-dark-500 { color: #94a3b8 !important; }
+html:not(.dark) .text-dark-600 { color: #bac7d7 !important; }
+
+/* ── Borders ─────────────────────────────────────────────────────────────── */
+html:not(.dark) .border-dark-800     { border-color: #e2e8f0 !important; }
+html:not(.dark) .border-dark-800\/50 { border-color: rgba(226,232,240,0.7) !important; }
+html:not(.dark) .border-dark-700     { border-color: #d1d5db !important; }
+html:not(.dark) .border-dark-700\/50 { border-color: rgba(209,213,219,0.7) !important; }
+html:not(.dark) .border-dark-500     { border-color: #94a3b8 !important; }
+
+/* ── Dividers ────────────────────────────────────────────────────────────── */
+html:not(.dark) .divide-dark-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+html:not(.dark) .divide-dark-800\/50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(226,232,240,0.7) !important;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+html:not(.dark) .card,
+html:not(.dark) .card-hover {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05) !important;
+}
+
+/* ── stat-label / stat-value ─────────────────────────────────────────────── */
+html:not(.dark) .stat-label { color: #64748b !important; }
+html:not(.dark) .stat-value { color: #0f172a !important; }
+
+/* ── Hover states ────────────────────────────────────────────────────────── */
+html:not(.dark) .hover\:bg-dark-800\/30:hover,
+html:not(.dark) .hover\:bg-dark-800\/40:hover,
+html:not(.dark) .hover\:bg-dark-800\/60:hover {
+  background-color: rgba(226,232,240,0.55) !important;
+}
+html:not(.dark) .hover\:bg-dark-800:hover { background-color: #e2e8f0 !important; }
+html:not(.dark) .hover\:bg-dark-700:hover { background-color: #d1d5db !important; }
+html:not(.dark) .hover\:bg-dark-900\/40:hover {
+  background-color: rgba(255,255,255,0.6) !important;
+}
+html:not(.dark) .hover\:text-dark-50:hover  { color: #0f172a !important; }
+html:not(.dark) .hover\:text-dark-100:hover { color: #1e293b !important; }
+html:not(.dark) .hover\:text-dark-200:hover { color: #334155 !important; }
+html:not(.dark) .hover\:text-dark-300:hover { color: #475569 !important; }
+html:not(.dark) .hover\:border-dark-700:hover { border-color: #d1d5db !important; }
+html:not(.dark) .hover\:border-dark-600:hover { border-color: #94a3b8 !important; }
+html:not(.dark) .hover\:border-dark-500:hover { border-color: #64748b !important; }
+
+/* ── Inputs & selects (global) ───────────────────────────────────────────── */
+html:not(.dark) input:not([type='range']),
+html:not(.dark) select,
+html:not(.dark) textarea {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #d1d5db;
+}
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder { color: #94a3b8; }
+
+/* ── Buttons with coloured backgrounds keep white text everywhere ────────── */
+html:not(.dark) .bg-positive,
+html:not(.dark) .bg-green-500,
+html:not(.dark) .bg-purple-600,
+html:not(.dark) .bg-brand-600,
+html:not(.dark) .bg-red-500,
+html:not(.dark) .bg-negative,
+html:not(.dark) .hover\:bg-green-500:hover,
+html:not(.dark) .hover\:bg-purple-500:hover,
+html:not(.dark) .hover\:bg-brand-500:hover {
+  color: #ffffff !important;
+}
+
+/* ── btn-ghost global ────────────────────────────────────────────────────── */
+html:not(.dark) .btn-ghost             { color: #475569; }
+html:not(.dark) .btn-ghost:hover       { color: #0f172a !important; background-color: #e2e8f0 !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STRATEGY PAGE — ADDITIONAL LIGHT MODE OVERRIDES
+   (Monaco editor + Recharts — cannot be handled by global utility overrides)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Timeframe pill container ────────────────────────────────────────────── */
+html:not(.dark) .strategy-layout .border-dark-800.rounded-lg {
+  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+}
+
+/* ── Monaco editor — light mode shell (margin, gutter) ──────────────────── */
+html:not(.dark) .strategy-layout .monaco-editor,
+html:not(.dark) .strategy-layout .monaco-editor-background,
+html:not(.dark) .strategy-layout .monaco-editor .margin {
+  background-color: #ffffff !important;
+}
+
+/* ── Recharts tooltip ────────────────────────────────────────────────────── */
+html:not(.dark) .strategy-layout .recharts-default-tooltip,
+html:not(.dark) .strategy-layout .recharts-tooltip-wrapper .recharts-tooltip-item-list {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  .text-positive { color: #22c55e; }
+  .text-negative { color: #ef4444; }
+
+  .bg-positive-subtle { background-color: rgba(34, 197, 94, 0.10); }
+  .bg-negative-subtle { background-color: rgba(239, 68, 68, 0.10); }
+
+  .glow-brand { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+
+  .scrollbar-hide            { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}
