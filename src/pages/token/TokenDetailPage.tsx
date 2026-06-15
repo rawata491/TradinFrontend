@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import { tokenSearchApi } from '@/services/tokenSearchApi'
 import { useTokenSearchStore } from '@/store/useTokenSearchStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { permissions } from '@/config/permissions'
 import { ChainBadge } from '@/components/token-search/ChainBadge'
 import { LiquidityBadge } from '@/components/token-search/LiquidityBadge'
 import { PageLoader } from '@/components/Loader'
@@ -25,7 +27,11 @@ export function TokenDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [broadcasting, setBroadcasting] = useState(false)
+  const [broadcastMsg, setBroadcastMsg] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const selectToken = useTokenSearchStore((s) => s.selectToken)
+  const user = useAuthStore((s) => s.user)
+  const canBroadcast = permissions.tokenBroadcast(user?.role)
 
   useEffect(() => {
     if (!chain || !address) return
@@ -43,17 +49,25 @@ export function TokenDetailPage() {
   }, [chain, address, selectToken])
 
   const copyAddress = () => {
-    if (address) navigator.clipboard.writeText(decodeURIComponent(address))
+    if (address) {
+      void navigator.clipboard.writeText(decodeURIComponent(address))
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   const handleBroadcast = async () => {
     if (!chain || !address) return
     setBroadcasting(true)
+    setBroadcastMsg(null)
     try {
       await tokenSearchApi.broadcastToken({
         chain,
         contract_address: decodeURIComponent(address),
       })
+      setBroadcastMsg('Broadcast queued')
+    } catch (err) {
+      setBroadcastMsg(err instanceof Error ? err.message : 'Broadcast failed')
     } finally {
       setBroadcasting(false)
     }
@@ -101,9 +115,10 @@ export function TokenDetailPage() {
               <code className="text-xs font-mono text-dark-500 bg-dark-900 px-2 py-1 rounded truncate max-w-md">
                 {token.contract_address}
               </code>
-              <button type="button" onClick={copyAddress} className="text-dark-500 hover:text-dark-300">
+              <button type="button" onClick={copyAddress} className="text-dark-500 hover:text-dark-300" title="Copy address">
                 <Copy className="h-3.5 w-3.5" />
               </button>
+              {copied && <span className="text-xs text-positive">Copied</span>}
             </div>
             {token.dex && (
               <p className="text-sm text-dark-400 mt-2 capitalize">Trading on {token.dex}</p>
@@ -115,14 +130,23 @@ export function TokenDetailPage() {
                 ${token.price_usd < 0.01 ? token.price_usd.toExponential(3) : token.price_usd.toFixed(6)}
               </p>
             )}
-            <button
-              type="button"
-              onClick={handleBroadcast}
-              disabled={broadcasting}
-              className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5"
-            >
-              <Send className="h-3.5 w-3.5" /> Alert
-            </button>
+            {canBroadcast && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleBroadcast}
+                  disabled={broadcasting}
+                  className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5"
+                >
+                  <Send className="h-3.5 w-3.5" /> {broadcasting ? 'Sending…' : 'Alert'}
+                </button>
+                {broadcastMsg && (
+                  <p className={`text-xs ${broadcastMsg.includes('failed') || broadcastMsg.includes('Failed') ? 'text-negative' : 'text-positive'}`}>
+                    {broadcastMsg}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
 

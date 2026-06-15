@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { useStrategyStore } from '@/store/useStrategyStore'
 import { useThemeStore } from '@/store/useThemeStore'
+import { Download } from 'lucide-react'
 import type { Trade } from '@/types/backtest'
 
 // ─────────────────────────── Theme-aware chart colours ───────────────────────
@@ -233,6 +234,30 @@ export function BacktestDashboard() {
 
   const isProfit = result.net_profit_pct >= 0
 
+  const exportCsv = () => {
+    const headers = ['entry_timestamp', 'exit_timestamp', 'label', 'entry_price', 'exit_price', 'pnl_pct']
+    const rows = result.trades.map((t: Trade) => [
+      t.entry_timestamp, t.exit_timestamp, t.label, t.entry_price, t.exit_price, t.pnl_pct,
+    ])
+    const summary = [
+      [],
+      ['metric', 'value'],
+      ['net_profit_pct', result.net_profit_pct],
+      ['win_rate_pct', result.win_rate_pct],
+      ['max_drawdown_pct', result.max_drawdown_pct],
+      ['sharpe_ratio', result.sharpe_ratio],
+      ['profit_factor', result.profit_factor],
+    ]
+    const csv = [headers, ...rows, ...summary].map((r) => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `backtest-${Date.now()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="p-4 space-y-6">
       {/* Strategy header */}
@@ -243,9 +268,14 @@ export function BacktestDashboard() {
             {result.symbol} · {result.timeframe} · {result.bars_tested} bars · {result.execution_ms}ms
           </p>
         </div>
-        <span className={`text-2xl font-bold font-mono ${isProfit ? 'text-positive' : 'text-negative'}`}>
-          {isProfit ? '+' : ''}{result.net_profit_pct.toFixed(2)}%
-        </span>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={exportCsv} className="btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5">
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </button>
+          <span className={`text-2xl font-bold font-mono ${isProfit ? 'text-positive' : 'text-negative'}`}>
+            {isProfit ? '+' : ''}{result.net_profit_pct.toFixed(2)}%
+          </span>
+        </div>
       </div>
 
       {/* Key stats — row 1 */}

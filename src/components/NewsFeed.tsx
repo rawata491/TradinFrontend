@@ -150,7 +150,14 @@ export function NewsFeed({
 
       {/* Error */}
       {error && (
-        <p className="text-sm text-red-400 py-3">Failed to load news. Please try again.</p>
+        <div className="py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-400">Failed to load news.</p>
+          {onPageChange && (
+            <button type="button" onClick={() => onPageChange(page)} className="text-xs text-brand-400 hover:underline">
+              Retry
+            </button>
+          )}
+        </div>
       )}
 
       {/* Loading skeletons */}

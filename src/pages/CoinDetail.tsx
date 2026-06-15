@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { TradingChart } from '@/charts/TradingChart'
 import { PriceAlertsPanel } from '@/components/alerts/PriceAlertsPanel'
+import { PracticeTradeButton } from '@/components/practice/PracticeTradeSheet'
 import { StrategyWorkspace } from '@/components/strategy/StrategyWorkspace'
 import { CoinAvatar } from '@/components/CoinAvatar'
 import { PageLoader } from '@/components/Loader'
@@ -65,14 +66,22 @@ export function CoinDetail() {
     trades,
     isLoadingProduct,
     isLoadingCandles,
+    candleError,
     error,
     timeframe,
     setTimeframe,
     refresh,
   } = useCoinDetail(productId ?? '')
 
-  const normalizedProductId = productId?.toUpperCase() ?? ''
   const { subscribe } = useWebSocket()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    refresh()
+    window.setTimeout(() => setIsRefreshing(false), 800)
+  }
+
+  const normalizedProductId = productId?.toUpperCase() ?? ''
   const isWatched = useWatchlistStore((s) => s.isWatched(normalizedProductId))
   // Live ticker for the current product — drives real-time chart updates
   const liveTicker = useMarketStore((s) => s.tickers[normalizedProductId] ?? null)
@@ -127,9 +136,10 @@ export function CoinDetail() {
   }
 
   if (error && !product) {
+    const notFound = /not found/i.test(error)
     return (
       <div className="max-w-screen-xl mx-auto px-4 py-12">
-        <ErrorState message={error} onRetry={refresh} />
+        <ErrorState message={error} onRetry={refresh} variant={notFound ? 'notFound' : 'general'} />
       </div>
     )
   }
@@ -143,8 +153,13 @@ export function CoinDetail() {
   }
 
   const isPositive = parseFloat(product?.price_percentage_change_24h ?? '0') >= 0
-  // At this point productId is guaranteed non-null (returned early above)
   const symbolStr = symbol as string
+  const livePriceNum = (() => {
+    const fromTicker = liveTicker?.price ? parseFloat(liveTicker.price) : NaN
+    if (Number.isFinite(fromTicker) && fromTicker > 0) return fromTicker
+    const fromProduct = parseFloat(product?.price ?? '')
+    return Number.isFinite(fromProduct) && fromProduct > 0 ? fromProduct : null
+  })()
 
   return (
     <div
@@ -208,6 +223,7 @@ export function CoinDetail() {
                 {formatChange(product?.price_percentage_change_24h)} (24h)
               </span>
             </div>
+            <PracticeTradeButton productId={normalizedProductId} marketPrice={livePriceNum} />
             <div className="flex items-center gap-2 mt-1">
               <button
                 onClick={() => setTab('strategy')}
@@ -217,7 +233,7 @@ export function CoinDetail() {
                 Strategy
               </button>
               <button
-                onClick={() => toggleItem(productId)}
+                onClick={() => toggleItem(normalizedProductId)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 border ${
                   isWatched
                     ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/20'
@@ -228,11 +244,12 @@ export function CoinDetail() {
                 {isWatched ? 'Watching' : 'Watch'}
               </button>
               <button
-                onClick={refresh}
-                className="btn-ghost flex items-center gap-1.5 text-sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing || isLoadingProduct || isLoadingCandles}
+                className="btn-ghost flex items-center gap-1.5 text-sm disabled:opacity-50"
                 title="Refresh data"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
@@ -240,8 +257,8 @@ export function CoinDetail() {
 
         {/* 24H stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-dark-800">
-          <StatItem label="24h High" value={formatPrice(product?.mid_market_price)} highlight="positive" />
-          <StatItem label="24h Low" value={formatPrice(product?.base_min_size ? product.price : '—')} />
+          <StatItem label="24h High" value={formatPrice(liveTicker?.high_24_h)} highlight="positive" />
+          <StatItem label="24h Low" value={formatPrice(liveTicker?.low_24_h)} />
           <StatItem label="24h Volume" value={formatVolume(product?.volume_24h)} />
           <StatItem
             label="Vol Change 24h"
@@ -290,7 +307,14 @@ export function CoinDetail() {
 
       {activeTab === 'chart' && (
         <>
-      {/* Chart — receives live WebSocket ticks so the last candle updates in real-time */}
+      {candleError && (
+        <div className="rounded-lg border border-negative/30 bg-negative/10 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-negative">{candleError}</p>
+          <button type="button" onClick={handleRefresh} className="text-xs text-brand-400 hover:underline">
+            Retry
+          </button>
+        </div>
+      )}
       <TradingChart
         candles={candles}
         isLoading={isLoadingCandles}

@@ -1,0 +1,46 @@
+import { Navigate, useLocation } from 'react-router-dom'
+import { ShieldAlert } from 'lucide-react'
+import { useAuthStore } from '@/store/useAuthStore'
+import { PageLoader } from '@/components/Loader'
+
+export function ProtectedRoute({
+  children,
+  adminOnly = false,
+}: {
+  children: React.ReactNode
+  adminOnly?: boolean
+}) {
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const isLoading = useAuthStore((s) => s.isLoading)
+  const location = useLocation()
+
+  if (isLoading) {
+    return <PageLoader message="Checking session…" />
+  }
+
+  if (!token || !user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+
+  if (adminOnly && user.role !== 'admin') {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 text-center space-y-4">
+        <ShieldAlert className="h-12 w-12 mx-auto text-dark-500" />
+        <h1 className="text-lg font-semibold text-dark-100">Admin access required</h1>
+        <p className="text-sm text-dark-400">
+          This feature is restricted to administrators. Contact your admin if you need access.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="text-sm text-brand-400 hover:text-brand-300"
+        >
+          Go back
+        </button>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}

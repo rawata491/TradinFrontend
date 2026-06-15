@@ -95,6 +95,12 @@ export function AIInsightCard({ insight, loading = false, error = null }: AIInsi
 
   return (
     <div className="card p-5 space-y-5">
+      {insight.is_stale && (
+        <p className="text-xs text-yellow-400/90 bg-yellow-500/10 rounded-lg px-3 py-2 mb-3">
+          Cached or fallback analysis — configure OPENAI_API_KEY for live AI insights.
+        </p>
+      )}
+
       {/* Header row */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">

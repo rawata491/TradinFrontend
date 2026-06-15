@@ -10,6 +10,7 @@ interface UseCoinDetailReturn {
   trades: MarketTradesResponse | null
   isLoadingProduct: boolean
   isLoadingCandles: boolean
+  candleError: string | null
   error: string | null
   timeframe: Timeframe
   setTimeframe: (tf: Timeframe) => void
@@ -46,15 +47,18 @@ export function useCoinDetail(productId: string): UseCoinDetailReturn {
     }
   }, [normalizedId])
 
+  const [candleError, setCandleError] = useState<string | null>(null)
+
   const fetchCandles = useCallback(async () => {
     if (!normalizedId) return
     setIsLoadingCandles(true)
+    setCandleError(null)
     try {
       const data = await candleApi.get(normalizedId, timeframe)
       setCandles(data.candles)
     } catch (err) {
-      console.error('Failed to load candles:', err)
       setCandles([])
+      setCandleError(err instanceof Error ? err.message : 'Failed to load chart data')
     } finally {
       setIsLoadingCandles(false)
     }
@@ -109,6 +113,7 @@ export function useCoinDetail(productId: string): UseCoinDetailReturn {
     trades,
     isLoadingProduct,
     isLoadingCandles,
+    candleError,
     error,
     timeframe,
     setTimeframe,

@@ -18,12 +18,12 @@ export function Loader({ size = 'md', className = '' }: LoaderProps) {
   )
 }
 
-export function PageLoader() {
+export function PageLoader({ message = 'Loading market data…' }: { message?: string }) {
   return (
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="flex flex-col items-center gap-4">
         <Loader size="lg" />
-        <p className="text-dark-400 text-sm">Loading market data…</p>
+        <p className="text-dark-400 text-sm">{message}</p>
       </div>
     </div>
   )

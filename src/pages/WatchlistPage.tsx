@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Star, Trash2, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { CoinAvatar } from '@/components/CoinAvatar'
-import { TokenSearchBar } from '@/components/token-search/TokenSearchBar'
+import { UnifiedSearchBar } from '@/components/token-search/UnifiedSearchBar'
 import { useWatchlist } from '@/hooks/useWatchlist'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useMarketStore } from '@/store/useMarketStore'
@@ -42,7 +42,7 @@ export function WatchlistPage() {
             )}
           </div>
           <p className="text-dark-400 text-sm">
-            Track your favourite cryptocurrencies in real time
+            Track your favorite cryptocurrencies in real time
           </p>
         </div>
         {watchlistItems.length > 0 && (
@@ -64,7 +64,7 @@ export function WatchlistPage() {
           <Plus className="h-4 w-4 text-brand-400" />
           <span className="text-sm font-medium text-dark-300">Add a coin</span>
         </div>
-        <TokenSearchBar />
+        <UnifiedSearchBar />
       </div>
 
       {watchlistItems.length === 0 ? (
@@ -149,7 +149,7 @@ export function WatchlistPage() {
                       <button
                         onClick={() => toggleItem(id)}
                         className="p-1.5 text-yellow-400 hover:text-negative rounded-lg hover:bg-negative/10 
-                                   transition-all duration-150 opacity-0 group-hover:opacity-100"
+                                   transition-all duration-150 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                         title="Remove from watchlist"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

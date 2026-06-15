@@ -1,8 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Activity, Fish, ArrowLeftRight, Droplets, RefreshCw, Users, LineChart } from 'lucide-react'
 import { useOnchainStore } from '@/store/useOnchainStore'
+import { onchainApi } from '@/services/onchainApi'
 import { tradesToWhales } from '@/utils/whaleDetection'
+import { SmartMoneyTable } from '@/components/onchain/SmartMoneyTable'
+import { HolderDistribution } from '@/components/onchain/HolderDistribution'
+import { LiquidityChart } from '@/components/onchain/LiquidityChart'
+import { WalletTracker } from '@/components/onchain/WalletTracker'
 import { OnchainMetrics } from '@/components/onchain/OnchainMetrics'
 import { OnchainPriceChart } from '@/components/onchain/OnchainPriceChart'
 import { WhaleActivityFeed } from '@/components/onchain/WhaleActivityFeed'
@@ -41,7 +46,16 @@ function resolveTokenFromParams(
 ): TrackedOnchainToken {
   if (tokenId) return findTrackedTokenById(tokenId) ?? DEFAULT_ONCHAIN_TOKEN
   if (paramChain && paramAddress) {
-    return findTrackedTokenByChainAddress(paramChain, paramAddress) ?? DEFAULT_ONCHAIN_TOKEN
+    const addr = decodeURIComponent(paramAddress)
+    const found = findTrackedTokenByChainAddress(paramChain, addr)
+    if (found) return found
+    return {
+      id: `${paramChain}-${addr.slice(0, 8)}`,
+      name: addr.slice(0, 10),
+      symbol: addr.slice(0, 6).toUpperCase(),
+      chain: paramChain as TrackedOnchainToken['chain'],
+      address: addr,
+    }
   }
   return DEFAULT_ONCHAIN_TOKEN
 }
@@ -76,7 +90,59 @@ export function OnchainDashboard() {
     loadAnalysis,
     lastLoadedAt,
     loadedFor,
+    realtimeWhales,
   } = useOnchainStore()
+
+  const [smartMoney, setSmartMoney] = useState<Awaited<ReturnType<typeof onchainApi.getSmartMoney>>>([])
+  const [holders, setHolders] = useState<Awaited<ReturnType<typeof onchainApi.getHolders>>>([])
+  const [liquidityEvents, setLiquidityEvents] = useState<Awaited<ReturnType<typeof onchainApi.getLiquidity>>>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityError, setActivityError] = useState<string | null>(null)
+  const [walletAddress, setWalletAddress] = useState('')
+  const [walletStat, setWalletStat] = useState<Awaited<ReturnType<typeof onchainApi.getWalletStats>> | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadExtra = async () => {
+      setActivityLoading(true)
+      setActivityError(null)
+      try {
+        const [sm, h, liq] = await Promise.all([
+          onchainApi.getSmartMoney(activeToken.address, { chain: activeToken.chain }),
+          onchainApi.getHolders(activeToken.address, activeToken.chain),
+          onchainApi.getLiquidity(activeToken.address, { chain: activeToken.chain }),
+        ])
+        if (!cancelled) {
+          setSmartMoney(sm)
+          setHolders(h)
+          setLiquidityEvents(liq)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setActivityError(err instanceof Error ? err.message : 'Failed to load activity data')
+          setSmartMoney([])
+          setHolders([])
+          setLiquidityEvents([])
+        }
+      } finally {
+        if (!cancelled) setActivityLoading(false)
+      }
+    }
+    void loadExtra()
+    return () => { cancelled = true }
+  }, [activeToken.chain, activeToken.address])
+
+  useEffect(() => {
+    if (!walletAddress.trim()) {
+      setWalletStat(null)
+      return
+    }
+    let cancelled = false
+    void onchainApi.getWalletStats(walletAddress.trim(), activeToken.chain)
+      .then((stat) => { if (!cancelled) setWalletStat(stat) })
+      .catch(() => { if (!cancelled) setWalletStat(null) })
+    return () => { cancelled = true }
+  }, [walletAddress, activeToken.chain])
 
   const whaleResult = tradesToWhales(trades, poolInfo?.volume_h24_usd)
   const { whales, thresholdUsd, usedFallback } = whaleResult
@@ -293,6 +359,9 @@ export function OnchainDashboard() {
                       No trades met the whale threshold — showing the {whales.length} largest recent trades instead.
                     </p>
                   )}
+                  {realtimeWhales.length > 0 && (
+                    <p className="text-xs text-brand-400 mb-2">{realtimeWhales.length} live whale event(s) received</p>
+                  )}
                   <WhaleActivityFeed whales={whales} signals={[]} />
                 </>
               )}
@@ -300,54 +369,49 @@ export function OnchainDashboard() {
           )}
 
           {tab === 'activity' && (
+            <div className="space-y-4">
+              {activityLoading && (
+                <p className="text-sm text-dark-400 text-center py-4">Loading smart money & holder data…</p>
+              )}
+              {activityError && (
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+                  {activityError}. DB-backed tabs need sync — try Overview live data or add token to tracked list.
+                </div>
+              )}
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="card p-4">
                 <h2 className="text-sm font-semibold text-dark-200 mb-4">DEX Activity (live)</h2>
                 <PoolActivityPanel pool={poolInfo} />
               </div>
               <div className="card p-4">
-                <h2 className="text-sm font-semibold text-dark-200 mb-3">24h Pool Stats</h2>
-                {poolInfo ? (
-                  <dl className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <dt className="text-dark-400">Buy transactions</dt>
-                      <dd className="font-mono text-positive">{poolInfo.buys_h24 ?? '—'}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-dark-400">Sell transactions</dt>
-                      <dd className="font-mono text-negative">{poolInfo.sells_h24 ?? '—'}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-dark-400">Unique buyers</dt>
-                      <dd className="font-mono text-dark-100">{poolInfo.buyers_h24 ?? '—'}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-dark-400">Unique sellers</dt>
-                      <dd className="font-mono text-dark-100">{poolInfo.sellers_h24 ?? '—'}</dd>
-                    </div>
-                    <div className="flex justify-between border-t border-dark-800 pt-3">
-                      <dt className="text-dark-400">6h volume</dt>
-                      <dd className="font-mono text-dark-100">
-                        ${(poolInfo.volume_h6_usd ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-dark-400">1h volume</dt>
-                      <dd className="font-mono text-dark-100">
-                        ${(poolInfo.volume_h1_usd ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </dd>
-                    </div>
-                  </dl>
-                ) : (
-                  <p className="text-dark-500 text-sm">No pool data available.</p>
-                )}
+                <h2 className="text-sm font-semibold text-dark-200 mb-3">Smart Money</h2>
+                <SmartMoneyTable wallets={smartMoney} />
               </div>
+              <div className="card p-4">
+                <h2 className="text-sm font-semibold text-dark-200 mb-3">Holder Distribution</h2>
+                <HolderDistribution snapshots={holders} />
+              </div>
+              <div className="card p-4">
+                <h2 className="text-sm font-semibold text-dark-200 mb-3">Wallet Tracker</h2>
+                <input
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  placeholder="Wallet address"
+                  className="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-2 text-sm mb-3"
+                />
+                <WalletTracker wallet={walletStat} address={walletAddress} />
+              </div>
+            </div>
             </div>
           )}
 
           {tab === 'liquidity' && (
             <div className="space-y-6">
               <PoolSummaryCard pool={poolInfo} tokenName={activeToken.name} />
+              <div className="card p-4">
+                <h2 className="text-sm font-semibold text-dark-200 mb-3">Liquidity Events · {rangeText}</h2>
+                <LiquidityChart events={liquidityEvents} height={280} />
+              </div>
               <div className="card p-4">
                 <h2 className="text-sm font-semibold text-dark-200 mb-3">Volume Over Time · {rangeText}</h2>
                 <VolumeTimelineChart candles={ohlcvCandles} height={280} />

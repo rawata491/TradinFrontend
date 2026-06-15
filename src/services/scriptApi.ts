@@ -1,4 +1,4 @@
-import http from '@/services/httpClient'
+import http, { scriptHttp } from '@/services/httpClient'
 import type { Script, ScriptCreate, ScriptUpdate, ScriptListResponse } from '@/types/script'
 import type { ValidationResult, ValidateRequest } from '@/types/compiler'
 import type { RunRequest, RunResponse, Signal } from '@/types/signal'
@@ -30,10 +30,10 @@ export const scriptApi = {
     http.post(`/api/scripts/${scriptId}/run/${symbol}`, payload).then((r) => r.data),
 
   backtest: (symbol: string, payload: BacktestRequest): Promise<BacktestResult> =>
-    http.post(`/api/scripts/backtest/${symbol}`, payload).then((r) => r.data),
+    scriptHttp.post(`/api/scripts/backtest/${symbol}`, payload).then((r) => r.data),
 
   backtestSaved: (scriptId: number, symbol: string, payload: BacktestRequest): Promise<BacktestResult> =>
-    http.post(`/api/scripts/${scriptId}/backtest/${symbol}`, payload).then((r) => r.data),
+    scriptHttp.post(`/api/scripts/${scriptId}/backtest/${symbol}`, payload).then((r) => r.data),
 
   getSignals: (scriptId: number, symbol: string, limit = 100): Promise<{ signals: Signal[] }> =>
     http.get(`/api/scripts/${scriptId}/signals/${symbol}`, { params: { limit } }).then((r) => r.data),

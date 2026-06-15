@@ -47,3 +47,7 @@ export function isOnchainSignal(msg: WSMessage): msg is { type: 'onchain_signal'
 export function isOnchainWhale(msg: WSMessage): msg is { type: 'onchain_whale'; data: WhaleEvent } {
   return msg.type === 'onchain_whale'
 }
+
+export function isStrategySignal(msg: WSMessage): msg is { type: 'strategy_signal'; data: StrategySignalWSData } {
+  return msg.type === 'strategy_signal'
+}

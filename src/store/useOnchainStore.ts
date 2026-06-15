@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { analyzeTokenLive } from '@/services/geckoTerminalApi'
+import { onchainApi } from '@/services/onchainApi'
 import { DEFAULT_ONCHAIN_TOKEN } from '@/constants/onchainTokens'
 import { dateRangeKey, defaultDateRange, isCompleteDateRange, normalizeDateRange } from '@/utils/onchainDateRange'
-import type { OhlcvCandle, OnchainChain, OnchainDateRange, OnchainTrade, TokenMetrics, TradeHeatmapData } from '@/types/onchain'
+import type { OhlcvCandle, OnchainChain, OnchainDateRange, OnchainSignal, OnchainTrade, TokenMetrics, TradeHeatmapData, WhaleEvent } from '@/types/onchain'
 import type { OnchainAnalysis } from '@/types/onchainAnalysis'
 
 interface OnchainState {
@@ -21,12 +22,14 @@ interface OnchainState {
   isLoading: boolean
   error: string | null
   lastLoadedAt: number | null
+  realtimeSignals: OnchainSignal[]
+  realtimeWhales: WhaleEvent[]
 
   setSelectedToken: (chain: OnchainChain, address: string) => void
   setDateRange: (range: OnchainDateRange) => void
   loadAnalysis: (chain?: OnchainChain, address?: string) => Promise<void>
-  addRealtimeSignal: (_signal: unknown) => void
-  addRealtimeWhale: (_event: unknown) => void
+  addRealtimeSignal: (signal: OnchainSignal) => void
+  addRealtimeWhale: (event: WhaleEvent) => void
 }
 
 let fetchGeneration = 0
@@ -90,6 +93,8 @@ export const useOnchainStore = create<OnchainState>((set, get) => ({
   isLoading: false,
   error: null,
   lastLoadedAt: null,
+  realtimeSignals: [],
+  realtimeWhales: [],
 
   setSelectedToken: (chain, address) => {
     const current = get()
@@ -132,12 +137,21 @@ export const useOnchainStore = create<OnchainState>((set, get) => ({
 
     try {
       const normalized = normalizeDateRange(dateRange)!
-      const data = await analyzeTokenLive(
-        selectedChain,
-        selectedToken,
-        normalized.startDate,
-        normalized.endDate,
-      )
+      let data: OnchainAnalysis
+      try {
+        data = await onchainApi.analyze(selectedToken, {
+          chain: selectedChain,
+          start_date: normalized.startDate,
+          end_date: normalized.endDate,
+        })
+      } catch {
+        data = await analyzeTokenLive(
+          selectedChain,
+          selectedToken,
+          normalized.startDate,
+          normalized.endDate,
+        )
+      }
 
       if (generation !== fetchGeneration || dateRangeKey(get().dateRange) !== rangeKey) return
 
@@ -158,6 +172,28 @@ export const useOnchainStore = create<OnchainState>((set, get) => ({
     }
   },
 
-  addRealtimeSignal: () => {},
-  addRealtimeWhale: () => {},
+  addRealtimeSignal: (signal) =>
+    set((s) => ({
+      realtimeSignals: [signal, ...s.realtimeSignals].slice(0, 50),
+    })),
+
+  addRealtimeWhale: (event) =>
+    set((s) => ({
+      realtimeWhales: [event, ...s.realtimeWhales].slice(0, 50),
+      trades: event.token_address === s.selectedToken
+        ? [{
+            id: Date.now(),
+            chain: event.chain,
+            token_address: event.token_address,
+            wallet: event.wallet,
+            side: event.event_type.includes('BUY') ? 'BUY' as const : 'SELL' as const,
+            amount: 0,
+            usd_value: event.usd_value,
+            timestamp: new Date().toISOString(),
+            dex: '',
+            tx_hash: '',
+            raw_source: 'ws',
+          }, ...s.trades].slice(0, 300)
+        : s.trades,
+    })),
 }))
