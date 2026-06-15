@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { TrendingUp, TrendingDown, Activity, BarChart2 } from 'lucide-react'
-import { TokenSearchBar } from '@/components/token-search/TokenSearchBar'
 import { CoinCard } from '@/components/CoinCard'
 import { MarketTable } from '@/components/MarketTable'
 import { WatchlistPanel } from '@/components/WatchlistPanel'
@@ -11,6 +10,7 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { useWatchlistStore } from '@/store/useWatchlistStore'
 import { useMarketStore } from '@/store/useMarketStore'
 import { formatVolume, formatChange, getChangeColor } from '@/utils/formatters'
+import { FearGreedWidget } from '@/components/analytics/FearGreedWidget'
 
 export function Dashboard() {
   const { products, isLoading, error, refresh } = useCoins(50)
@@ -67,34 +67,32 @@ export function Dashboard() {
       <section>
         <div className="text-center mb-6 space-y-2">
           <h1 className="text-3xl font-bold text-dark-50">Crypto Market Dashboard</h1>
-          <p className="text-dark-400">Real-time prices powered by Coinbase Advanced Trade</p>
-        </div>
-
-        {/* Search */}
-        <div className="flex justify-center mb-8">
-          <TokenSearchBar />
+          <p className="text-dark-400">Real-time prices powered by Gate.io — search any market above</p>
         </div>
 
         {/* Market overview stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard
             icon={<BarChart2 className="h-5 w-5 text-brand-400" />}
             label="Markets Tracked"
-            value={products.length.toString()}
+            value={isLoading ? '…' : products.length.toString()}
             sub="SPOT USD pairs"
+            loading={isLoading}
           />
           <StatCard
             icon={<Activity className="h-5 w-5 text-purple-400" />}
             label="24h Volume"
-            value={formatVolume(totalVolume)}
+            value={isLoading ? '…' : formatVolume(totalVolume)}
             sub="Across all pairs"
+            loading={isLoading}
           />
           <StatCard
             icon={<TrendingUp className="h-5 w-5 text-positive" />}
             label="Avg 24h Change"
-            value={formatChange(avgChange)}
+            value={isLoading ? '…' : formatChange(avgChange)}
             valueClass={getChangeColor(avgChange)}
             sub="All tracked coins"
+            loading={isLoading}
           />
           <StatCard
             icon={<Activity className="h-5 w-5 text-yellow-400" />}
@@ -103,6 +101,7 @@ export function Dashboard() {
             valueClass={wsStatus === 'connected' ? 'text-positive' : 'text-yellow-400'}
             sub="WebSocket stream"
           />
+          <FearGreedWidget />
         </div>
       </section>
 
@@ -172,12 +171,14 @@ function StatCard({
   value,
   sub,
   valueClass = 'text-dark-50',
+  loading = false,
 }: {
   icon: React.ReactNode
   label: string
   value: string
   sub: string
   valueClass?: string
+  loading?: boolean
 }) {
   return (
     <div className="card p-4">
@@ -185,7 +186,11 @@ function StatCard({
         {icon}
         <span className="stat-label">{label}</span>
       </div>
-      <p className={`text-xl font-bold font-mono ${valueClass}`}>{value}</p>
+      {loading ? (
+        <div className="h-7 w-24 bg-dark-800 rounded animate-pulse" />
+      ) : (
+        <p className={`text-xl font-bold font-mono ${valueClass}`}>{value}</p>
+      )}
       <p className="text-xs text-dark-500 mt-1">{sub}</p>
     </div>
   )

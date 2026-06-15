@@ -19,7 +19,11 @@ export function ErrorState({
         <Icon className="h-8 w-8 text-negative" />
       </div>
       <h3 className="text-lg font-semibold text-dark-50 mb-2">
-        {variant === 'network' ? 'Connection Failed' : 'Error'}
+        {variant === 'network'
+          ? 'Connection Failed'
+          : variant === 'notFound'
+            ? 'Not Found'
+            : 'Error'}
       </h3>
       <p className="text-dark-400 text-sm max-w-sm mb-6">{message}</p>
       {onRetry && (

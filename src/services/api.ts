@@ -1,4 +1,4 @@
-import http from '@/services/httpClient'
+import http, { aiHttp } from '@/services/httpClient'
 import type {
   Product,
   CandleResponse,
@@ -49,7 +49,7 @@ export const candleApi = {
 
 export const aiApi = {
   getInsights: async (symbol: string): Promise<AIInsight> => {
-    const { data } = await http.get(`/api/ai/insights/${symbol}`)
+    const { data } = await aiHttp.get(`/api/ai/insights/${symbol}`)
     return data
   },
 

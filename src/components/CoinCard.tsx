@@ -92,12 +92,13 @@ export function CoinCard({ product }: CoinCardProps) {
           e.stopPropagation()
           toggleItem(product.product_id)
         }}
-        className={`absolute top-3 right-3 p-1.5 rounded-lg transition-all duration-150 opacity-0 group-hover:opacity-100 ${
+        className={`absolute top-3 right-3 p-1.5 rounded-lg transition-all duration-150 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
           isWatched
-            ? 'opacity-100 text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
+            ? 'text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
             : 'text-dark-500 hover:text-yellow-400 hover:bg-dark-700'
         }`}
         title={isWatched ? 'Remove from watchlist' : 'Add to watchlist'}
+        aria-label={isWatched ? 'Remove from watchlist' : 'Add to watchlist'}
       >
         <Star className={`h-3.5 w-3.5 ${isWatched ? 'fill-yellow-400' : ''}`} />
       </button>

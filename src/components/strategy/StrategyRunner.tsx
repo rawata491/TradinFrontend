@@ -1,20 +1,37 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import { Play, BarChart2, Settings, ChevronDown } from 'lucide-react'
 import { useEditorStore } from '@/store/useEditorStore'
 import { useStrategyStore } from '@/store/useStrategyStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { usePaperTrading } from '@/hooks/usePaperTrading'
+import { permissions } from '@/config/permissions'
+import { signalToPaperSide } from '@/utils/paperTrading'
 import { scriptApi } from '@/services/scriptApi'
 import { useTimeframes } from '@/hooks/useTimeframes'
-const SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'AVAX-USD', 'DOGE-USD'] as const
+import { useMarketStore } from '@/store/useMarketStore'
+import { productApi } from '@/services/api'
+
+const FALLBACK_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'AVAX-USD', 'DOGE-USD'] as const
 
 // ─────────────────────────── Settings panel ──────────────────────────────────
 
-function SettingsPanel({ open }: { open: boolean }) {
+function SettingsPanel({
+  open,
+  openPaperOnSignal,
+  setOpenPaperOnSignal,
+}: {
+  open: boolean
+  openPaperOnSignal: boolean
+  setOpenPaperOnSignal: (v: boolean) => void
+}) {
   const capital = useEditorStore(s => s.initialCapital)
   const feePct  = useEditorStore(s => s.feePct)
   const setCapital = useEditorStore(s => s.setCapital)
   const setFeePct  = useEditorStore(s => s.setFeePct)
   const broadcastTelegram = useEditorStore(s => s.broadcastTelegram)
   const setBroadcastTelegram = useEditorStore(s => s.setBroadcastTelegram)
+  const user = useAuthStore(s => s.user)
+  const canTelegram = permissions.strategyTelegram(user?.role)
 
   if (!open) return null
 
@@ -43,14 +60,25 @@ function SettingsPanel({ open }: { open: boolean }) {
           step={0.01}
         />
       </label>
+      {canTelegram && (
+        <label className="col-span-2 flex items-center gap-2 text-xs text-dark-300 pt-1">
+          <input
+            type="checkbox"
+            checked={broadcastTelegram}
+            onChange={e => setBroadcastTelegram(e.target.checked)}
+            className="rounded border-dark-600"
+          />
+          Send Telegram alert when latest bar has a BUY/SELL/EXIT signal
+        </label>
+      )}
       <label className="col-span-2 flex items-center gap-2 text-xs text-dark-300 pt-1">
         <input
           type="checkbox"
-          checked={broadcastTelegram}
-          onChange={e => setBroadcastTelegram(e.target.checked)}
+          checked={openPaperOnSignal}
+          onChange={e => setOpenPaperOnSignal(e.target.checked)}
           className="rounded border-dark-600"
         />
-        Send Telegram alert when latest bar has a BUY/SELL/EXIT signal
+        Open practice trade from latest bar signal (uses default USD size @ signal price)
       </label>
     </div>
   )
@@ -66,6 +94,8 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
   const capital     = useEditorStore(s => s.initialCapital)
   const feePct      = useEditorStore(s => s.feePct)
   const broadcastTelegram = useEditorStore(s => s.broadcastTelegram)
+  const user = useAuthStore(s => s.user)
+  const canTelegram = permissions.strategyTelegram(user?.role)
   const setSymbol   = useEditorStore(s => s.setSymbol)
   const setTimeframe = useEditorStore(s => s.setTimeframe)
   const compilerErrors = useEditorStore(s => s.compilerErrors)
@@ -88,6 +118,25 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
   const addLog          = useStrategyStore(s => s.addLog)
 
   const [showSettings, setShowSettings] = useState(false)
+  const [openPaperOnSignal, setOpenPaperOnSignal] = useState(false)
+  const marketProducts = useMarketStore((s) => s.products)
+  const tickers = useMarketStore((s) => s.tickers)
+  const { openTradeUsd, defaultTradeUsd } = usePaperTrading()
+  const [extraSymbols, setExtraSymbols] = useState<string[]>([])
+
+  useEffect(() => {
+    if (lockSymbol || marketProducts.length >= 20) return
+    void productApi.list(50).then((res) => {
+      setExtraSymbols(res.products.map((p) => p.product_id))
+    }).catch(() => {})
+  }, [lockSymbol, marketProducts.length])
+
+  const symbolOptions = useMemo(() => {
+    const ids = new Set<string>([...FALLBACK_SYMBOLS])
+    for (const p of marketProducts) ids.add(p.product_id)
+    for (const id of extraSymbols) ids.add(id)
+    return [...ids].sort()
+  }, [marketProducts, extraSymbols])
 
   const hasErrors  = compilerErrors.some(e => e.severity === 'error')
   const isRunning  = runStatus     === 'running'
@@ -100,22 +149,44 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
     setActiveTab('chart')
     addLog(`Running "${runSymbol}" (${timeframe})…`)
     try {
+      const telegram = canTelegram && broadcastTelegram
       const result = await scriptApi.run(runSymbol, {
         source, timeframe, limit: 300,
         initial_capital: capital, fee_pct: feePct,
-        broadcast_telegram: broadcastTelegram,
+        broadcast_telegram: telegram,
       })
       setRunResult(result)
       setRunStatus(result.success ? 'success' : 'error')
+      let paperNote = ''
+      if (result.success && openPaperOnSignal && result.signals.length > 0) {
+        const last = result.signals[result.signals.length - 1]
+        const side = signalToPaperSide(last.direction, last.signal_type)
+        const tickerPx = parseFloat(tickers[runSymbol]?.price ?? '')
+        const price = last.price > 0 ? last.price : (Number.isFinite(tickerPx) ? tickerPx : 0)
+        if (side && price > 0) {
+          try {
+            await openTradeUsd({
+              product_id: runSymbol,
+              side,
+              usd: defaultTradeUsd,
+              price,
+              source: 'strategy',
+            })
+            paperNote = ` · Practice ${side} $${defaultTradeUsd} @ ${price}`
+          } catch (paperErr) {
+            addLog(`Paper trade failed: ${paperErr instanceof Error ? paperErr.message : paperErr}`)
+          }
+        }
+      }
       addLog(result.success
-        ? `✓ Done — ${result.signals.length} signal(s) in ${result.execution_ms}ms${broadcastTelegram ? ' · Telegram queued for latest bar' : ''}`
+        ? `✓ Done — ${result.signals.length} signal(s) in ${result.execution_ms}ms${telegram ? ' · Telegram queued for latest bar' : ''}${paperNote}`
         : `✗ Error: ${result.errors[0] ?? 'Unknown error'}`
       )
     } catch (err) {
       setRunStatus('error')
       addLog(`✗ Network error: ${err}`)
     }
-  }, [source, runSymbol, timeframe, capital, feePct, broadcastTelegram, disabled, isRunning, setRunStatus, setActiveTab, addLog, setRunResult])
+  }, [source, runSymbol, timeframe, capital, feePct, broadcastTelegram, canTelegram, openPaperOnSignal, openTradeUsd, defaultTradeUsd, tickers, disabled, isRunning, setRunStatus, setActiveTab, addLog, setRunResult])
 
   const handleBacktest = useCallback(async () => {
     if (disabled || isBacking) return
@@ -129,7 +200,7 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
       })
       setBacktestResult(result)
       setBacktestStatus(result.success ? 'success' : 'error')
-      if (result.success) setActiveTab('chart')
+      if (result.success) setActiveTab('backtest')
       addLog(result.success
         ? `✓ Backtest done — ${result.total_trades} trades, ${result.net_profit_pct.toFixed(2)}% P&L, win rate ${result.win_rate_pct.toFixed(1)}%`
         : `✗ Backtest failed: ${result.errors[0] ?? 'Unknown'}`
@@ -158,7 +229,7 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
                          border border-dark-700 focus:border-brand-500 outline-none cursor-pointer
                          hover:border-dark-600 transition-colors"
             >
-              {SYMBOLS.map(s => <option key={s} value={s}>{s}</option>)}
+              {symbolOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dark-400 pointer-events-none" />
           </div>
@@ -232,7 +303,11 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
         </button>
       </div>
 
-      <SettingsPanel open={showSettings} />
+      <SettingsPanel
+        open={showSettings}
+        openPaperOnSignal={openPaperOnSignal}
+        setOpenPaperOnSignal={setOpenPaperOnSignal}
+      />
 
       {hasErrors && (
         <p className="text-xs text-red-500 px-0.5">

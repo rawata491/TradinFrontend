@@ -19,17 +19,20 @@ export function PriceAlertsPanel({
   const [alerts, setAlerts] = useState<PriceAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [targetPrice, setTargetPrice] = useState('')
   const [direction, setDirection] = useState<AlertDirection>('above')
   const [notifyTelegram, setNotifyTelegram] = useState(false)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const data = await alertApi.list(productId)
       setAlerts(data.filter((a) => a.is_active))
-    } catch {
+    } catch (err) {
       setAlerts([])
+      setError(err instanceof Error ? err.message : 'Failed to load alerts')
     } finally {
       setLoading(false)
     }
@@ -54,6 +57,7 @@ export function PriceAlertsPanel({
     const price = parseFloat(targetPrice)
     if (Number.isNaN(price) || price <= 0) return
     setSaving(true)
+    setError(null)
     try {
       await alertApi.create({
         product_id: productId,
@@ -62,7 +66,11 @@ export function PriceAlertsPanel({
         notify_telegram: notifyTelegram,
       })
       setTargetPrice('')
+      setSuccessMsg('Alert created')
+      window.setTimeout(() => setSuccessMsg(null), 3000)
       await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create alert')
     } finally {
       setSaving(false)
     }
@@ -123,6 +131,13 @@ export function PriceAlertsPanel({
           </button>
         </div>
 
+        {error && (
+          <p className="text-xs text-negative bg-negative/10 rounded-lg px-3 py-2">{error}</p>
+        )}
+        {successMsg && (
+          <p className="text-xs text-positive bg-positive/10 rounded-lg px-3 py-2">{successMsg}</p>
+        )}
+
         {loading ? (
           <p className="text-xs text-dark-500 text-center py-4">Loading alerts…</p>
         ) : alerts.length === 0 ? (
@@ -137,6 +152,17 @@ export function PriceAlertsPanel({
                 {a.notify_telegram && (
                   <span className="text-[10px] text-brand-400 bg-brand-900/30 px-1.5 py-0.5 rounded">TG</span>
                 )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await alertApi.toggle(a.id, false)
+                    load()
+                  }}
+                  className="p-1 text-dark-500 hover:text-dark-300 transition-colors"
+                  title="Disable alert"
+                >
+                  Off
+                </button>
                 <button
                   type="button"
                   onClick={async () => {

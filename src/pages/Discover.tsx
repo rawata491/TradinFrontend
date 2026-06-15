@@ -4,6 +4,8 @@ import { DiscoveryTabs } from '@/components/discovery/DiscoveryTabs'
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard'
 import { ErrorState } from '@/components/ErrorState'
 import { useDiscoveryStore } from '@/store/useDiscoveryStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { permissions } from '@/config/permissions'
 import { formatDistanceToNow } from '@/utils/formatters'
 import type { DiscoveryCategory } from '@/types/discovery'
 
@@ -33,6 +35,8 @@ export function DiscoverPage() {
   const setMinScore = useDiscoveryStore((s) => s.setMinScore)
   const fetchDiscovery = useDiscoveryStore((s) => s.fetchDiscovery)
   const runFullScan = useDiscoveryStore((s) => s.runFullScan)
+  const user = useAuthStore((s) => s.user)
+  const canScan = permissions.discoverScan(user?.role)
   const fetchOverview = useDiscoveryStore((s) => s.fetchOverview)
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export function DiscoverPage() {
 
   const tabDescription = {
     new_dex: 'Fresh DEX pools from GeckoTerminal with active liquidity and volume.',
-    new_cex: 'Recently listed trading pairs on your configured CEX (Coinbase / Gate).',
+    new_cex: 'Recently listed trading pairs on your configured CEX (Gate.io).',
     surging: 'Tokens with volume or price momentum spikes vs prior snapshots.',
     trending: 'Trending pools and tokens from GeckoTerminal, DexScreener, and CoinGecko.',
   }[activeTab]
@@ -66,10 +70,14 @@ export function DiscoverPage() {
             <h1 className="text-2xl font-bold text-dark-50">Discover</h1>
           </div>
           <p className="text-sm text-dark-400">
-            Find newly tradable cryptos with growth potential. Scans run once daily — use Refresh to scan now.
+            Find newly tradable cryptos with growth potential.
+            {canScan
+              ? ' Scans run once daily — use Scan now to refresh.'
+              : ' Results refresh on the daily automatic scan.'}
           </p>
         </div>
 
+        {canScan && (
         <button
           type="button"
           onClick={() => runFullScan()}
@@ -79,6 +87,7 @@ export function DiscoverPage() {
           <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           {isRefreshing ? 'Scanning…' : 'Scan now'}
         </button>
+        )}
       </div>
 
       {/* Risk disclaimer */}
@@ -137,7 +146,7 @@ export function DiscoverPage() {
 
       {/* Content */}
       {error && !isLoading && (
-        <ErrorState message={error} onRetry={() => runFullScan()} />
+        <ErrorState message={error} onRetry={() => fetchDiscovery()} />
       )}
 
       {isLoading && items.length === 0 && (
@@ -155,7 +164,13 @@ export function DiscoverPage() {
             <>
               <p className="text-sm">No scan results yet.</p>
               <p className="text-xs mt-1">
-                Click <strong className="text-dark-300">Scan now</strong> to run a discovery scan, or wait for the daily automatic scan.
+                {canScan ? (
+                  <>
+                    Click <strong className="text-dark-300">Scan now</strong> to run a discovery scan, or wait for the daily automatic scan.
+                  </>
+                ) : (
+                  'Waiting for the daily automatic scan — check back later.'
+                )}
               </p>
             </>
           ) : (

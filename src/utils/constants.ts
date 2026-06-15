@@ -77,6 +77,11 @@ export const WS_MAX_RECONNECT_DELAY = 60000  // 60s max
 export const WS_RECONNECT_BACKOFF = 1.5
 
 export const WATCHLIST_STORAGE_KEY = 'tradin_watchlist'
+export const PORTFOLIO_STORAGE_KEY = 'tradin_portfolio'
+
+export function normalizeProductId(id: string): string {
+  return id.trim().toUpperCase()
+}
 
 export const OVERLAY_COLORS = [
   '#3B82F6', '#F59E0B', '#EC4899', '#8B5CF6',

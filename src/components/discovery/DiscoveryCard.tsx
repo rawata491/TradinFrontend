@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Clock, Activity } from 'lucide-react'
+import { TrendingUp, TrendingDown, Clock, Activity, Shield, Layers } from 'lucide-react'
 import { ChainBadge } from '@/components/token-search/ChainBadge'
 import { GrowthBadge } from './GrowthBadge'
 import { RiskBadge } from './RiskBadge'
@@ -23,11 +23,12 @@ export function DiscoveryCard({ token }: DiscoveryCardProps) {
   const path = discoveryTokenToPath(token)
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate(path)}
-      className="w-full text-left rounded-xl border border-dark-800 bg-dark-900/60 hover:bg-dark-800/80 hover:border-dark-700 transition-all p-4 group"
-    >
+    <div className="rounded-xl border border-dark-800 bg-dark-900/60 hover:border-dark-700 transition-all group">
+      <button
+        type="button"
+        onClick={() => navigate(path)}
+        className="w-full text-left p-4"
+      >
       <div className="flex items-start gap-3">
         {token.logo_url ? (
           <img
@@ -107,6 +108,32 @@ export function DiscoveryCard({ token }: DiscoveryCardProps) {
           )}
         </div>
       </div>
-    </button>
+      </button>
+
+      {token.source_type !== 'cex' && token.contract_address && (
+        <div className="flex flex-wrap gap-2 px-4 pb-3 border-t border-dark-800/50 pt-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/analytics?tab=safety&chain=${token.chain}&address=${encodeURIComponent(token.contract_address)}`)
+            }}
+            className="text-[11px] px-2 py-1 rounded-md bg-dark-800 text-dark-300 hover:text-brand-400 flex items-center gap-1"
+          >
+            <Shield className="h-3 w-3" /> Safety scan
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/onchain?chain=${token.chain}&address=${encodeURIComponent(token.contract_address)}&tab=overview`)
+            }}
+            className="text-[11px] px-2 py-1 rounded-md bg-dark-800 text-dark-300 hover:text-brand-400 flex items-center gap-1"
+          >
+            <Layers className="h-3 w-3" /> On-chain
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

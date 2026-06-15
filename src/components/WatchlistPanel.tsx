@@ -86,8 +86,9 @@ export function WatchlistPanel() {
               <button
                 onClick={() => toggleItem(id)}
                 className="p-1.5 text-dark-600 hover:text-negative rounded-lg hover:bg-negative/10 
-                           opacity-0 group-hover:opacity-100 transition-all duration-150"
+                           opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-150"
                 title="Remove from watchlist"
+                aria-label="Remove from watchlist"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
