@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { BarChart2, Star, Home, WifiOff, Code2, Send, Layers } from 'lucide-react'
+import { BarChart2, Star, Home, WifiOff, Code2, Send, Layers, Sparkles } from 'lucide-react'
 import { useWatchlistStore } from '@/store/useWatchlistStore'
 import { ThemeToggle } from './ThemeToggle'
 import { TokenSearchBar } from '@/components/token-search/TokenSearchBar'
@@ -17,6 +17,7 @@ export function Navbar({ wsStatus }: NavbarProps) {
     { to: '/', label: 'Dashboard', icon: Home },
     { to: '/watchlist', label: 'Watchlist', icon: Star, badge: watchlistCount },
     { to: '/strategy', label: 'Strategy', icon: Code2 },
+    { to: '/discover', label: 'Discover', icon: Sparkles },
     { to: '/onchain', label: 'On-Chain', icon: Layers },
     { to: '/broadcast', label: 'Broadcast', icon: Send },
   ]

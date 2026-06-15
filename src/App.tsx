@@ -12,6 +12,7 @@ import { useThemeStore } from '@/store/useThemeStore'
 import { useBroadcastStore } from '@/store/useBroadcastStore'
 import { useOnchainStore } from '@/store/useOnchainStore'
 import { TokenDetailPage } from '@/pages/token/TokenDetailPage'
+import { DiscoverPage } from '@/pages/Discover'
 import { usePriceAlertToast } from '@/hooks/usePriceAlertToast'
 import { PriceAlertToast } from '@/components/alerts/PriceAlertToast'
 import { isBroadcastQueued, isOnchainSignal, isOnchainWhale } from '@/types/ws'
@@ -59,6 +60,7 @@ function AppLayout() {
           <Route path="/strategy" element={<StrategyPage />} />
           <Route path="/broadcast" element={<BroadcastPage />} />
           <Route path="/token/:chain/:address" element={<TokenDetailPage />} />
+          <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/onchain" element={<OnchainDashboard />} />
           <Route path="/onchain/*" element={<Navigate to="/onchain" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
