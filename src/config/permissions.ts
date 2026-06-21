@@ -15,6 +15,8 @@ export const permissions = {
   broadcast: (role?: string | null) => isAdmin(role),
   /** Manual discovery scan trigger */
   discoverScan: (role?: string | null) => isAdmin(role),
+  /** Manual whale scan trigger */
+  whaleScan: (role?: string | null) => isAdmin(role),
   /** Token detail → Telegram alert button */
   tokenBroadcast: (role?: string | null) => isAdmin(role),
   /** Strategy runner → send signals to Telegram */

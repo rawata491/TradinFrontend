@@ -1,13 +1,18 @@
 import { create } from 'zustand'
 import { discoveryApi } from '@/services/discoveryApi'
+import { whaleScanApi } from '@/services/whaleScanApi'
 import type { DiscoveryCategory, DiscoveryOverview, DiscoveryToken } from '@/types/discovery'
+import type { WhaleScanHit, WhaleScanOverview, WhaleScanRunStatus } from '@/types/whaleScan'
 
 interface DiscoveryState {
   activeTab: DiscoveryCategory
   chainFilter: string
   minScore: number
   items: DiscoveryToken[]
+  whaleHits: WhaleScanHit[]
   overview: DiscoveryOverview | null
+  whaleOverview: WhaleScanOverview | null
+  whaleRunStatus: WhaleScanRunStatus | null
   sourcesUsed: string[]
   scannedAt: string
   cached: boolean
@@ -20,6 +25,8 @@ interface DiscoveryState {
   setMinScore: (score: number) => void
   fetchDiscovery: (refresh?: boolean) => Promise<void>
   runFullScan: () => Promise<void>
+  runWhaleScan: () => Promise<void>
+  pollWhaleRunStatus: () => Promise<void>
   fetchOverview: () => Promise<void>
 }
 
@@ -53,7 +60,10 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   chainFilter: '',
   minScore: 0,
   items: [],
+  whaleHits: [],
   overview: null,
+  whaleOverview: null,
+  whaleRunStatus: null,
   sourcesUsed: [],
   scannedAt: '',
   cached: false,
@@ -62,7 +72,7 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   error: null,
 
   setActiveTab: (tab) => {
-    set({ activeTab: tab, items: [], error: null })
+    set({ activeTab: tab, items: [], whaleHits: [], error: null })
     get().fetchDiscovery()
   },
 
@@ -73,7 +83,9 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
 
   setMinScore: (score) => {
     set({ minScore: score })
-    get().fetchDiscovery()
+    if (get().activeTab !== 'whale_scan') {
+      get().fetchDiscovery()
+    }
   },
 
   fetchDiscovery: async () => {
@@ -83,9 +95,28 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
     set({ isLoading: true, error: null })
 
     try {
+      if (activeTab === 'whale_scan') {
+        const [hitsResult, whaleOverview] = await Promise.all([
+          whaleScanApi.getHits({ chain: chainFilter || undefined, page_size: 50 }),
+          whaleScanApi.getOverview().catch(() => null),
+        ])
+        set({
+          whaleHits: hitsResult.items,
+          whaleOverview: whaleOverview ?? get().whaleOverview,
+          items: [],
+          sourcesUsed: [],
+          scannedAt: hitsResult.scanned_at,
+          cached: false,
+          isLoading: false,
+          error: null,
+        })
+        return
+      }
+
       const result = await fetchByCategory(activeTab, chainFilter, minScore)
       set({
         items: result.items,
+        whaleHits: [],
         sourcesUsed: result.sources_used,
         scannedAt: result.scanned_at,
         cached: result.cached,
@@ -102,6 +133,8 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
 
   runFullScan: async () => {
     const { activeTab, chainFilter, minScore } = get()
+    if (activeTab === 'whale_scan') return
+
     set({ isRefreshing: true, error: null })
     try {
       await discoveryApi.runScan()
@@ -121,7 +154,6 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
           : null,
       })
     } catch (err) {
-      // Scan may have completed server-side — still try loading cache
       try {
         const result = await fetchByCategory(activeTab, chainFilter, minScore)
         if (result.items.length > 0) {
@@ -145,10 +177,52 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
     }
   },
 
+  runWhaleScan: async () => {
+    set({ isRefreshing: true, error: null })
+    try {
+      await whaleScanApi.runScan({ limit: 15 })
+      await get().pollWhaleRunStatus()
+    } catch (err) {
+      set({
+        isRefreshing: false,
+        error: err instanceof Error ? err.message : 'Whale scan failed to start',
+      })
+    }
+  },
+
+  pollWhaleRunStatus: async () => {
+    try {
+      const status = await whaleScanApi.getRunStatus()
+      set({ whaleRunStatus: status })
+
+      if (!status.is_running) {
+        set({ isRefreshing: false })
+        if (status.status === 'failed' && status.error) {
+          set({ error: status.error })
+        } else if (status.status === 'ok') {
+          set({ error: null })
+        }
+        if (status.status === 'ok' || status.status === 'failed') {
+          await Promise.all([get().fetchDiscovery(), get().fetchOverview()])
+        }
+      } else {
+        set({ isRefreshing: true })
+      }
+    } catch {
+      // ignore transient poll errors while scan runs
+    }
+  },
+
   fetchOverview: async () => {
     try {
-      const overview = await discoveryApi.getOverview()
-      set({ overview })
+      const [overview, whaleOverview] = await Promise.all([
+        discoveryApi.getOverview(),
+        whaleScanApi.getOverview().catch(() => null),
+      ])
+      set({
+        overview,
+        whaleOverview,
+      })
     } catch {
       // overview is optional
     }

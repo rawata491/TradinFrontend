@@ -1,6 +1,6 @@
 import type { TokenChain } from '@/types/tokenSearch'
 
-export type DiscoveryCategory = 'new_dex' | 'new_cex' | 'surging' | 'trending'
+export type DiscoveryCategory = 'new_dex' | 'new_cex' | 'surging' | 'trending' | 'whale_scan'
 export type RiskLevel = 'low' | 'medium' | 'high'
 export type SourceType = 'dex' | 'cex'
 
@@ -55,4 +55,5 @@ export const DISCOVERY_TABS: { id: DiscoveryCategory; label: string; description
   { id: 'new_cex', label: 'New CEX', description: 'Recently listed on Coinbase / Gate' },
   { id: 'surging', label: 'Surging', description: 'Volume or price momentum spikes' },
   { id: 'trending', label: 'Trending', description: 'Trending across DEX and market data' },
+  { id: 'whale_scan', label: 'Whale Scan', description: 'New tokens with recent whale activity' },
 ]
