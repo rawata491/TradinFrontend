@@ -7,8 +7,10 @@ import {
   CheckCircle,
   ShieldAlert,
   Brain,
+  Fish,
 } from 'lucide-react'
 import { tokenSearchApi } from '@/services/tokenSearchApi'
+import { whaleScanApi } from '@/services/whaleScanApi'
 import { useTokenSearchStore } from '@/store/useTokenSearchStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { permissions } from '@/config/permissions'
@@ -17,7 +19,9 @@ import { LiquidityBadge } from '@/components/token-search/LiquidityBadge'
 import { PageLoader } from '@/components/Loader'
 import { ErrorState } from '@/components/ErrorState'
 import { DetailStatGrid } from '@/components/detail/DetailStat'
+import { WhaleScanDetailModal } from '@/components/discovery/WhaleScanDetailModal'
 import type { DiscoveredToken, TokenChain } from '@/types/tokenSearch'
+import type { WhaleScanDetail, WhaleScanHit } from '@/types/whaleScan'
 
 export function TokenDetailPage() {
   const { chain, address } = useParams<{ chain: string; address: string }>()
@@ -29,6 +33,8 @@ export function TokenDetailPage() {
   const [broadcasting, setBroadcasting] = useState(false)
   const [broadcastMsg, setBroadcastMsg] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [whaleScan, setWhaleScan] = useState<WhaleScanDetail | null>(null)
+  const [whaleModalOpen, setWhaleModalOpen] = useState(false)
   const selectToken = useTokenSearchStore((s) => s.selectToken)
   const user = useAuthStore((s) => s.user)
   const canBroadcast = permissions.tokenBroadcast(user?.role)
@@ -46,6 +52,17 @@ export function TokenDetailPage() {
       })
       .catch((err) => setError((err as Error).message))
       .finally(() => setIsLoading(false))
+
+    whaleScanApi
+      .getDetail(chain, decodeURIComponent(address))
+      .then((data) => {
+        if (data.total_events > 0) {
+          setWhaleScan(data)
+        }
+      })
+      .catch(() => {
+        // not in whale scan registry
+      })
   }, [chain, address, selectToken])
 
   const copyAddress = () => {
@@ -76,8 +93,33 @@ export function TokenDetailPage() {
   if (isLoading) return <PageLoader />
   if (error || !token) return <ErrorState message={error ?? 'Token not found'} />
 
+  const whaleHitPreview: WhaleScanHit | null = whaleScan
+    ? {
+        chain: whaleScan.chain,
+        contract_address: whaleScan.contract_address,
+        symbol: whaleScan.symbol,
+        token_name: whaleScan.token_name,
+        dex: whaleScan.dex,
+        liquidity_usd: whaleScan.liquidity_usd,
+        volume_24h: whaleScan.volume_24h,
+        age_hours: whaleScan.age_hours,
+        last_scanned_at: whaleScan.last_scanned_at,
+        max_usd: whaleScan.max_usd,
+        score: whaleScan.score,
+        event_summary: whaleScan.event_summary,
+      }
+    : null
+
   return (
     <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
+      {whaleHitPreview && (
+        <WhaleScanDetailModal
+          open={whaleModalOpen}
+          hit={whaleHitPreview}
+          initialDetail={whaleScan}
+          onClose={() => setWhaleModalOpen(false)}
+        />
+      )}
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -85,6 +127,36 @@ export function TokenDetailPage() {
       >
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
+
+      {whaleScan && (
+        <button
+          type="button"
+          onClick={() => setWhaleModalOpen(true)}
+          className="card p-4 border-brand-500/20 bg-brand-500/5 w-full text-left hover:border-brand-500/40 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Fish className="h-4 w-4 text-brand-400" />
+            <span className="text-sm font-medium text-brand-400">Flagged by Whale Scan</span>
+          </div>
+          <p className="text-sm text-dark-300">
+            Recent whale activity detected in the last {whaleScan.lookback_hours}h
+            {whaleScan.max_usd > 0 && ` · max trade $${whaleScan.max_usd.toLocaleString()}`}.
+            <span className="text-brand-400 ml-1">View details →</span>
+          </p>
+          {whaleScan.event_summary.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {whaleScan.event_summary.map((item) => (
+                <span
+                  key={item.event_type}
+                  className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-dark-800 text-dark-300"
+                >
+                  {item.event_type.replace(/_/g, ' ')} ×{item.count}
+                </span>
+              ))}
+            </div>
+          )}
+        </button>
+      )}
 
       <div className="card p-6">
         <div className="flex flex-col sm:flex-row gap-6">
