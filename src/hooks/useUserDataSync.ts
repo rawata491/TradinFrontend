@@ -15,7 +15,7 @@ function isDefaultWatchlist(items: string[]): boolean {
   return sameItems(items, DEFAULT_WATCHLIST)
 }
 
-/** Sync watchlist + portfolio with Supabase-backed API when logged in. */
+/** Sync watchlist + portfolio with the backend API when logged in. */
 export function useUserDataSync() {
   const token = useAuthStore((s) => s.token)
   const isLoading = useAuthStore((s) => s.isLoading)

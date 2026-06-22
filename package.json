@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "@types/recharts": "^1.8.29",
-    "@vercel/analytics": "^2.0.1",
     "axios": "^1.7.9",
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^0.468.0",
@@ -25,6 +23,7 @@
   "devDependencies": {
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
+    "@types/recharts": "^1.8.29",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
     "@vitejs/plugin-react": "^4.3.4",
