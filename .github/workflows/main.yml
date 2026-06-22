@@ -1,0 +1,41 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Frontend
+        run: npm run build
+
+      - name: Deploy Frontend
+        run: |
+          mkdir -p /var/www/Tradin/Frontend
+
+          rsync -av --delete \
+            --exclude ".git" \
+            --exclude ".env" \
+            --exclude ".github" \
+            ./dist/ /var/www/Tradin/Frontend/
+
+      - name: Verify Deployment
+        run: |
+          ls -la /var/www/Tradin/Frontend
