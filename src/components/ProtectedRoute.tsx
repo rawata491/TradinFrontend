@@ -6,9 +6,12 @@ import { PageLoader } from '@/components/Loader'
 export function ProtectedRoute({
   children,
   adminOnly = false,
+  guestRedirect = 'login',
 }: {
   children: React.ReactNode
   adminOnly?: boolean
+  /** Where to send unauthenticated users. Use "welcome" for the home route. */
+  guestRedirect?: 'login' | 'welcome'
 }) {
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
@@ -20,6 +23,9 @@ export function ProtectedRoute({
   }
 
   if (!token || !user) {
+    if (guestRedirect === 'welcome') {
+      return <Navigate to="/welcome" replace />
+    }
     const next = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?next=${next}`} replace />
   }

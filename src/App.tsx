@@ -95,7 +95,7 @@ function AppLayout() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute guestRedirect="welcome"><Dashboard /></ProtectedRoute>} />
           <Route path="/coin/:productId" element={<ProtectedRoute><CoinDetail /></ProtectedRoute>} />
           <Route path="/watchlist" element={<ProtectedRoute><WatchlistPage /></ProtectedRoute>} />
           <Route path="/strategy" element={<ProtectedRoute><StrategyPage /></ProtectedRoute>} />
