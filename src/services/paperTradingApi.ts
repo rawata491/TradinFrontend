@@ -1,9 +1,27 @@
 import http from '@/services/httpClient'
-import type { PaperSide, PaperSource, PaperTrade, PaperTradeListResponse } from '@/types/paperTrade'
+import type {
+  PaperJournalAnalytics,
+  PaperMarkToMarketItem,
+  PaperOrderType,
+  PaperSide,
+  PaperSource,
+  PaperTrade,
+  PaperTradeListResponse,
+} from '@/types/paperTrade'
 
 export const paperTradingApi = {
-  list: async (status: 'all' | 'open' | 'closed' = 'all'): Promise<PaperTradeListResponse> => {
+  list: async (status: 'all' | 'open' | 'closed' | 'pending' = 'all'): Promise<PaperTradeListResponse> => {
     const { data } = await http.get('/api/paper-trades', { params: { status } })
+    return data
+  },
+
+  markToMarket: async (): Promise<{ items: PaperMarkToMarketItem[]; total_unrealized_pnl: number }> => {
+    const { data } = await http.get('/api/paper-trades/mark-to-market')
+    return data
+  },
+
+  journal: async (): Promise<PaperJournalAnalytics> => {
+    const { data } = await http.get('/api/paper-trades/journal')
     return data
   },
 
@@ -15,13 +33,21 @@ export const paperTradingApi = {
     fee_pct?: number
     notes?: string
     source?: PaperSource
+    order_type?: PaperOrderType
+    limit_price?: number
+    stop_loss?: number
+    take_profit?: number
+    script_id?: number
   }): Promise<PaperTrade> => {
     const { data } = await http.post('/api/paper-trades', payload)
     return data
   },
 
-  close: async (id: number, exit_price: number): Promise<PaperTrade> => {
-    const { data } = await http.post(`/api/paper-trades/${id}/close`, { exit_price })
+  close: async (id: number, exit_price: number, quantity?: number): Promise<PaperTrade> => {
+    const { data } = await http.post(`/api/paper-trades/${id}/close`, {
+      exit_price,
+      ...(quantity != null ? { quantity } : {}),
+    })
     return data
   },
 

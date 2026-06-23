@@ -39,6 +39,7 @@ export function PracticeHistory({
               <th className="text-left px-4 py-2 font-medium">When</th>
               <th className="text-left px-4 py-2 font-medium">Asset</th>
               <th className="text-left px-4 py-2 font-medium">Side</th>
+              <th className="text-left px-4 py-2 font-medium">Source</th>
               <th className="text-right px-4 py-2 font-medium">Entry</th>
               <th className="text-right px-4 py-2 font-medium">Exit</th>
               <th className="text-right px-4 py-2 font-medium">P&amp;L</th>
@@ -65,6 +66,9 @@ export function PracticeHistory({
                   >
                     {sideLabel(t.side)}
                   </span>
+                </td>
+                <td className="px-4 py-2.5 text-xs text-dark-500 capitalize">
+                  {t.source?.replace('_', ' ') ?? 'manual'}
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-dark-300">
                   {formatPrice(String(t.entry_price))}

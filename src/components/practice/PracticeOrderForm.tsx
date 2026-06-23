@@ -9,8 +9,9 @@ import {
   sideLabel,
   usdToQuantity,
 } from '@/utils/paperTrading'
-import type { PaperSide } from '@/types/paperTrade'
+import type { PaperOrderType, PaperSide } from '@/types/paperTrade'
 import { CoinAvatar } from '@/components/CoinAvatar'
+import { MarketPicker } from '@/components/MarketPicker'
 
 interface PracticeOrderFormProps {
   productId?: string
@@ -36,7 +37,11 @@ export function PracticeOrderForm({
 
   const [productId, setProductId] = useState(initialProductId.toUpperCase())
   const [side, setSide] = useState<PaperSide>('long')
+  const [orderType, setOrderType] = useState<PaperOrderType>('market')
   const [usd, setUsd] = useState(String(defaultTradeUsd))
+  const [limitPrice, setLimitPrice] = useState('')
+  const [stopLoss, setStopLoss] = useState('')
+  const [takeProfit, setTakeProfit] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -50,14 +55,22 @@ export function PracticeOrderForm({
 
   const price = externalPrice ?? null
   const usdNum = parseFloat(usd)
-  const qty = price != null && price > 0 ? usdToQuantity(usdNum, price) : 0
+  const effectivePrice =
+    orderType === 'limit' && limitPrice ? parseFloat(limitPrice) : price
+  const qty =
+    effectivePrice != null && effectivePrice > 0 ? usdToQuantity(usdNum, effectivePrice) : 0
   const canAfford = Number.isFinite(usdNum) && usdNum > 0 && usdNum <= summary.equity
 
   const preset = (amount: number) => setUsd(String(amount))
 
   const handleSubmit = async () => {
-    if (price == null || price <= 0) {
-      setFormError('Live price unavailable — open the coin chart or try again shortly')
+    if (orderType === 'market' && (price == null || price <= 0)) {
+      setFormError('Live price unavailable — wait for ticker or use a limit order')
+      return
+    }
+    const limitNum = parseFloat(limitPrice)
+    if (orderType === 'limit' && (!Number.isFinite(limitNum) || limitNum <= 0)) {
+      setFormError('Enter a valid limit price')
       return
     }
     if (!Number.isFinite(usdNum) || usdNum <= 0) {
@@ -72,12 +85,18 @@ export function PracticeOrderForm({
     setSubmitting(true)
     try {
       setDefaultTradeUsd(usdNum)
+      const sl = parseFloat(stopLoss)
+      const tp = parseFloat(takeProfit)
       await openTradeUsd({
         product_id: productId,
         side,
         usd: usdNum,
-        price,
+        price: orderType === 'limit' ? limitNum : (price as number),
         source: compact ? 'coin_detail' : 'manual',
+        order_type: orderType,
+        limit_price: orderType === 'limit' ? limitNum : undefined,
+        stop_loss: Number.isFinite(sl) && sl > 0 ? sl : undefined,
+        take_profit: Number.isFinite(tp) && tp > 0 ? tp : undefined,
       })
       onSuccess?.()
     } catch (err) {
@@ -119,15 +138,27 @@ export function PracticeOrderForm({
       </div>
       <p className="text-xs text-dark-500 -mt-2">{sideHint(side)}</p>
 
+      <div className="flex gap-2">
+        {(['market', 'limit'] as PaperOrderType[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setOrderType(t)}
+            className={`flex-1 py-1.5 rounded-md text-xs font-medium border capitalize ${
+              orderType === t
+                ? 'border-brand-500/50 bg-brand-500/10 text-brand-300'
+                : 'border-dark-700 text-dark-500'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       {!compact && (
         <label className="block space-y-1">
           <span className="text-xs text-dark-400">Asset</span>
-          <input
-            value={productId}
-            onChange={(e) => setProductId(e.target.value.toUpperCase())}
-            className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-sm font-mono"
-            placeholder="BTC-USD"
-          />
+          <MarketPicker value={productId} onChange={setProductId} />
         </label>
       )}
 
@@ -136,6 +167,20 @@ export function PracticeOrderForm({
           <CoinAvatar symbol={sym} size="sm" />
           <span className="font-mono font-semibold text-dark-100">{productId}</span>
         </div>
+      )}
+
+      {orderType === 'limit' && (
+        <label className="block space-y-1">
+          <span className="text-xs text-dark-400">Limit price</span>
+          <input
+            type="number"
+            value={limitPrice}
+            onChange={(e) => setLimitPrice(e.target.value)}
+            step="any"
+            className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-sm font-mono"
+            placeholder={price != null ? String(price) : '0.00'}
+          />
+        </label>
       )}
 
       <label className="block space-y-1">
@@ -152,6 +197,31 @@ export function PracticeOrderForm({
           />
         </div>
       </label>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block space-y-1">
+          <span className="text-xs text-dark-400">Stop loss</span>
+          <input
+            type="number"
+            value={stopLoss}
+            onChange={(e) => setStopLoss(e.target.value)}
+            step="any"
+            placeholder="Optional"
+            className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-xs font-mono"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs text-dark-400">Take profit</span>
+          <input
+            type="number"
+            value={takeProfit}
+            onChange={(e) => setTakeProfit(e.target.value)}
+            step="any"
+            placeholder="Optional"
+            className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-xs font-mono"
+          />
+        </label>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {[100, 250, 500, 1000].map((n) => (
@@ -173,30 +243,41 @@ export function PracticeOrderForm({
         </button>
       </div>
 
-      {price != null ? (
+      {effectivePrice != null && effectivePrice > 0 ? (
         <div className="rounded-lg bg-dark-900/60 border border-dark-800 px-3 py-2 text-xs text-dark-400 space-y-0.5">
           <p>
-            Market: <span className="font-mono text-dark-200">{formatPrice(String(price))}</span>
+            {orderType === 'limit' ? 'Limit' : 'Market'}:{' '}
+            <span className="font-mono text-dark-200">{formatPrice(String(effectivePrice))}</span>
           </p>
           {qty > 0 && (
             <p>
               ≈ {qty.toFixed(6)} {sym} · {sideLabel(side).toLowerCase()} ~$
-              {quantityToUsd(qty, price).toFixed(2)}
+              {quantityToUsd(qty, effectivePrice).toFixed(2)}
             </p>
           )}
         </div>
       ) : (
         <p className="text-xs text-dark-500">
-          Waiting for live price…{' '}
-          <Link to={`/coin/${productId}`} className="text-brand-400 hover:underline">
-            Open chart
-          </Link>
+          {orderType === 'limit'
+            ? 'Set a limit price to place a pending order.'
+            : (
+              <>
+                Waiting for live price…{' '}
+                <Link to={`/coin/${productId}`} className="text-brand-400 hover:underline">
+                  Open chart
+                </Link>
+              </>
+            )}
         </p>
       )}
 
       <button
         type="button"
-        disabled={submitting || price == null || !canAfford}
+        disabled={
+          submitting ||
+          !canAfford ||
+          (orderType === 'market' && (price == null || price <= 0))
+        }
         onClick={() => void handleSubmit()}
         className={`w-full py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 ${
           side === 'long' ? 'btn-primary bg-positive hover:bg-positive/90' : 'bg-negative hover:bg-negative/90 text-white'
@@ -205,7 +286,7 @@ export function PracticeOrderForm({
         {submitting ? (
           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
         ) : (
-          `${sideLabel(side)} $${Number.isFinite(usdNum) ? usdNum.toLocaleString() : '—'} @ market`
+          `${sideLabel(side)} $${Number.isFinite(usdNum) ? usdNum.toLocaleString() : '—'} @ ${orderType}`
         )}
       </button>
 
@@ -214,7 +295,7 @@ export function PracticeOrderForm({
       )}
       {!compact && (
         <p className="text-[10px] text-dark-600">
-          Virtual balance ${startingBalance.toLocaleString()} · 0.1% fee per side (editable in settings)
+          Virtual balance ${startingBalance.toLocaleString()} · SL/TP auto-close on live price
         </p>
       )}
     </div>

@@ -14,6 +14,7 @@ import {
 import { TradingChart } from '@/charts/TradingChart'
 import { PriceAlertsPanel } from '@/components/alerts/PriceAlertsPanel'
 import { PracticeTradeButton } from '@/components/practice/PracticeTradeSheet'
+import { CoinTraderWorkspace } from '@/components/coin/CoinTraderWorkspace'
 import { StrategyWorkspace } from '@/components/strategy/StrategyWorkspace'
 import { CoinAvatar } from '@/components/CoinAvatar'
 import { PageLoader } from '@/components/Loader'
@@ -37,6 +38,7 @@ import {
   getCoinSymbol,
 } from '@/utils/formatters'
 import type { Timeframe } from '@/types'
+import { RecentTradesTape } from '@/components/coin/RecentTradesTape'
 
 type CoinTab = 'chart' | 'intel' | 'strategy'
 
@@ -164,7 +166,7 @@ export function CoinDetail() {
   return (
     <div
       className={`mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in ${
-        activeTab === 'strategy' ? 'max-w-screen-2xl' : 'max-w-screen-xl'
+        activeTab === 'strategy' ? 'max-w-screen-2xl' : 'max-w-screen-2xl'
       }`}
     >
       {/* Breadcrumb */}
@@ -306,90 +308,65 @@ export function CoinDetail() {
       </div>
 
       {activeTab === 'chart' && (
-        <>
-      {candleError && (
-        <div className="rounded-lg border border-negative/30 bg-negative/10 px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-negative">{candleError}</p>
-          <button type="button" onClick={handleRefresh} className="text-xs text-brand-400 hover:underline">
-            Retry
-          </button>
-        </div>
-      )}
-      <TradingChart
-        candles={candles}
-        isLoading={isLoadingCandles}
-        timeframe={timeframe}
-        onTimeframeChange={(tf: Timeframe) => setTimeframe(tf)}
-        productId={normalizedProductId}
-        liveTicker={liveTicker}
-        enablePriceAlerts
-        onAlertPricePreset={handleAlertPricePreset}
-      />
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 min-w-0 space-y-4">
+            {candleError && (
+              <div className="rounded-lg border border-negative/30 bg-negative/10 px-4 py-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-negative">{candleError}</p>
+                <button type="button" onClick={handleRefresh} className="text-xs text-brand-400 hover:underline">
+                  Retry
+                </button>
+              </div>
+            )}
+            <TradingChart
+              candles={candles}
+              isLoading={isLoadingCandles}
+              timeframe={timeframe}
+              onTimeframeChange={(tf: Timeframe) => setTimeframe(tf)}
+              productId={normalizedProductId}
+              liveTicker={liveTicker}
+              enablePriceAlerts
+              onAlertPricePreset={handleAlertPricePreset}
+            />
 
-      <div className="mt-4" ref={alertsPanelRef}>
-        <PriceAlertsPanel
-          productId={normalizedProductId}
-          currentPrice={
-            liveTicker
-              ? parseFloat(liveTicker.price)
-              : product
-                ? parseFloat(product.price)
-                : undefined
-          }
-          presetPrice={alertPresetPrice}
-          onPresetConsumed={() => setAlertPresetPrice(null)}
-        />
-      </div>
+            <div ref={alertsPanelRef}>
+              <PriceAlertsPanel
+                productId={normalizedProductId}
+                currentPrice={
+                  liveTicker
+                    ? parseFloat(liveTicker.price)
+                    : product
+                      ? parseFloat(product.price)
+                      : undefined
+                }
+                presetPrice={alertPresetPrice}
+                onPresetConsumed={() => setAlertPresetPrice(null)}
+              />
+            </div>
 
-      {trades && trades.trades && trades.trades.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-dark-800 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-brand-400" />
-            <h3 className="text-sm font-semibold text-dark-50">Recent Trades</h3>
-            <span className="ml-auto flex items-center gap-1 text-xs text-positive">
-              <span className="h-1.5 w-1.5 rounded-full bg-positive animate-pulse" />
-              Live
-            </span>
+            {trades && trades.trades && trades.trades.length > 0 && (
+              <div className="card overflow-hidden lg:hidden">
+                <div className="px-4 py-3 border-b border-dark-800 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-brand-400" />
+                  <h3 className="text-sm font-semibold text-dark-50">Recent Trades</h3>
+                  <span className="ml-auto flex items-center gap-1 text-xs text-positive">
+                    <span className="h-1.5 w-1.5 rounded-full bg-positive animate-pulse" />
+                    Live
+                  </span>
+                </div>
+                <div className="overflow-x-auto p-3">
+                  <RecentTradesTape trades={trades.trades} limit={10} />
+                </div>
+              </div>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-dark-400 border-b border-dark-800">
-                  <th className="px-4 py-2 text-left font-medium">Side</th>
-                  <th className="px-4 py-2 text-right font-medium">Price</th>
-                  <th className="px-4 py-2 text-right font-medium">Size</th>
-                  <th className="px-4 py-2 text-right font-medium">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-800/50">
-                {trades.trades.slice(0, 10).map((trade) => (
-                  <tr key={trade.trade_id} className="hover:bg-dark-800/30 transition-colors">
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`text-xs font-semibold ${
-                          trade.side === 'BUY' ? 'text-positive' : 'text-negative'
-                        }`}
-                      >
-                        {trade.side}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-dark-50">
-                      {formatPrice(trade.price)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-dark-300">
-                      {parseFloat(trade.size).toFixed(6)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-dark-500 text-xs">
-                      {new Date(trade.time).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+          <CoinTraderWorkspace
+            productId={normalizedProductId}
+            marketPrice={livePriceNum}
+            trades={trades}
+          />
         </div>
-      )}
-        </>
       )}
 
       {activeTab === 'intel' && (

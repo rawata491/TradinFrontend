@@ -13,6 +13,8 @@ import {
   type AnalyticsTabId,
 } from '@/config/analyticsSections'
 import { TabIntro } from '@/components/analytics/TabIntro'
+import { OrderBookPanel } from '@/components/analytics/OrderBookPanel'
+import { MarketPicker } from '@/components/MarketPicker'
 
 const SLOW_TABS: Partial<Record<AnalyticsTabId, string>> = {
   overview: 'Loading market dashboard…',
@@ -174,10 +176,10 @@ export function AnalyticsPage() {
       {(tab === 'orderbook' || tab === 'liquidations' || tab === 'mtf') && (
         <div className="flex gap-2 items-center">
           <label className="text-xs text-dark-400">Product</label>
-          <input
+          <MarketPicker
             value={productId}
-            onChange={(e) => setProductId(e.target.value.toUpperCase())}
-            className="bg-dark-900 border border-dark-700 rounded-lg px-3 py-1.5 text-sm text-dark-100 w-36"
+            onChange={setProductId}
+            className="w-48"
           />
         </div>
       )}
@@ -473,48 +475,6 @@ function CorrelationPanel({ data }: { data?: { symbols: string[]; matrix: number
             </li>
           ))}
         </ul>
-      </div>
-    </div>
-  )
-}
-
-function OrderBookPanel({ data }: { data?: Record<string, unknown> }) {
-  if (!data) return null
-  const bids = (data.bids as Array<{ price: number; size: number }>) ?? []
-  const asks = (data.asks as Array<{ price: number; size: number }>) ?? []
-  const imbalance = Number(data.imbalance ?? 0)
-  return (
-    <div className="grid lg:grid-cols-3 gap-4">
-      <div className="card p-4 lg:col-span-2 grid grid-cols-2 gap-4">
-        <div>
-          <h3 className="text-xs text-positive mb-2">Bids</h3>
-          {bids.slice(0, 10).map((b, i) => (
-            <div key={i} className="flex justify-between text-xs font-mono py-0.5">
-              <span className="text-positive">{b.price.toFixed(2)}</span>
-              <span className="text-dark-400">{b.size.toFixed(4)}</span>
-            </div>
-          ))}
-        </div>
-        <div>
-          <h3 className="text-xs text-negative mb-2">Asks</h3>
-          {asks.slice(0, 10).map((a, i) => (
-            <div key={i} className="flex justify-between text-xs font-mono py-0.5">
-              <span className="text-negative">{a.price.toFixed(2)}</span>
-              <span className="text-dark-400">{a.size.toFixed(4)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="card p-4 space-y-3">
-        <div><p className="stat-label">Spread</p><p className="font-mono">{Number(data.spread_pct).toFixed(4)}%</p></div>
-        <div><p className="stat-label">Bid Depth</p><p className="font-mono">${Number(data.bid_depth_usd).toLocaleString()}</p></div>
-        <div><p className="stat-label">Ask Depth</p><p className="font-mono">${Number(data.ask_depth_usd).toLocaleString()}</p></div>
-        <div>
-          <p className="stat-label">Imbalance</p>
-          <p className={`font-mono ${imbalance > 0 ? 'text-positive' : imbalance < 0 ? 'text-negative' : ''}`}>
-            {(imbalance * 100).toFixed(1)}% {imbalance > 0 ? 'bid-heavy' : imbalance < 0 ? 'ask-heavy' : 'balanced'}
-          </p>
-        </div>
       </div>
     </div>
   )

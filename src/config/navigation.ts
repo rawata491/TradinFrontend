@@ -26,14 +26,14 @@ export interface NavItem {
 export const PRIMARY_NAV: NavItem[] = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/discover', label: 'Discover', icon: Sparkles },
+  { to: '/practice', label: 'Practice', icon: FlaskConical },
   { to: '/analytics', label: 'Analytics', icon: LineChart },
-  { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
 ]
 
 /** Grouped under "More" on desktop; overflow menu on mobile. */
 export const SECONDARY_NAV: NavItem[] = [
+  { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { to: '/watchlist', label: 'Watchlist', icon: Star, badgeKey: 'watchlist' },
-  { to: '/practice', label: 'Practice', icon: FlaskConical },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/strategy', label: 'Strategy', icon: Code2 },
   { to: '/onchain', label: 'On-Chain', icon: Layers },

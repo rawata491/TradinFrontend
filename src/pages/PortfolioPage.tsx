@@ -11,6 +11,7 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { formatPrice, getChangeColor, formatChange } from '@/utils/formatters'
 import { CoinAvatar } from '@/components/CoinAvatar'
 import { EmptyState } from '@/components/ErrorState'
+import { MarketPicker } from '@/components/MarketPicker'
 
 export function PortfolioPage() {
   const { holdings, addHolding, removeHolding, clearAll } = usePortfolioStore()
@@ -93,7 +94,10 @@ export function PortfolioPage() {
             <Briefcase className="h-6 w-6 text-brand-500" />
             Portfolio
           </h1>
-          <p className="text-sm text-dark-400 mt-1">Track holdings, cost basis, and unrealized PnL</p>
+          <p className="text-sm text-dark-400 mt-1">
+            Manual holdings tracker — separate from your{' '}
+            <Link to="/practice" className="text-brand-400 hover:underline">practice trading account</Link>
+          </p>
         </div>
         {holdings.length > 0 && (
           <button type="button" onClick={clearAll} className="text-xs text-dark-500 hover:text-negative">
@@ -124,13 +128,9 @@ export function PortfolioPage() {
       <div className="card p-4">
         <h2 className="text-sm font-semibold text-dark-200 mb-3">Add Position</h2>
         <div className="flex flex-wrap gap-2 items-end">
-          <label className="space-y-1">
+          <label className="space-y-1 flex-1 min-w-[180px]">
             <span className="text-xs text-dark-400">Product</span>
-            <input
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              className="bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-sm text-dark-100 w-32"
-            />
+            <MarketPicker value={productId} onChange={setProductId} />
           </label>
           <label className="space-y-1">
             <span className="text-xs text-dark-400">Quantity</span>

@@ -3,6 +3,7 @@ import { Play, BarChart2, Settings, ChevronDown } from 'lucide-react'
 import { useEditorStore } from '@/store/useEditorStore'
 import { useStrategyStore } from '@/store/useStrategyStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useScriptStore } from '@/store/useScriptStore'
 import { usePaperTrading } from '@/hooks/usePaperTrading'
 import { permissions } from '@/config/permissions'
 import { signalToPaperSide } from '@/utils/paperTrading'
@@ -122,6 +123,7 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
   const marketProducts = useMarketStore((s) => s.products)
   const tickers = useMarketStore((s) => s.tickers)
   const { openTradeUsd, defaultTradeUsd } = usePaperTrading()
+  const activeScript = useScriptStore((s) => s.activeScript)
   const [extraSymbols, setExtraSymbols] = useState<string[]>([])
 
   useEffect(() => {
@@ -171,6 +173,7 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
               usd: defaultTradeUsd,
               price,
               source: 'strategy',
+              script_id: activeScript?.id,
             })
             paperNote = ` · Practice ${side} $${defaultTradeUsd} @ ${price}`
           } catch (paperErr) {
@@ -186,7 +189,7 @@ export function StrategyRunner({ lockSymbol }: { lockSymbol?: string }) {
       setRunStatus('error')
       addLog(`✗ Network error: ${err}`)
     }
-  }, [source, runSymbol, timeframe, capital, feePct, broadcastTelegram, canTelegram, openPaperOnSignal, openTradeUsd, defaultTradeUsd, tickers, disabled, isRunning, setRunStatus, setActiveTab, addLog, setRunResult])
+  }, [source, runSymbol, timeframe, capital, feePct, broadcastTelegram, canTelegram, openPaperOnSignal, openTradeUsd, defaultTradeUsd, tickers, activeScript, disabled, isRunning, setRunStatus, setActiveTab, addLog, setRunResult])
 
   const handleBacktest = useCallback(async () => {
     if (disabled || isBacking) return

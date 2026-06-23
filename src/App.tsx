@@ -39,6 +39,7 @@ import { usePriceAlertToast } from '@/hooks/usePriceAlertToast'
 import { useUserDataSync } from '@/hooks/useUserDataSync'
 import { useBrowserNotifications } from '@/hooks/useBrowserNotifications'
 import { PriceAlertToast } from '@/components/alerts/PriceAlertToast'
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
 import { isBroadcastQueued, isOnchainSignal, isOnchainWhale, isStrategySignal } from '@/types/ws'
 
 function AppLayout() {
@@ -117,6 +118,7 @@ function AppLayout() {
       {token ? <AppFooter /> : null}
       <CookieConsent />
       <PriceAlertToast toast={alertToast} />
+      {token && <OnboardingModal />}
     </div>
   )
 }

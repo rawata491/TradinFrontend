@@ -353,6 +353,17 @@ export function BacktestDashboard() {
           </div>
         </div>
       )}
+
+      <div className="card p-4 border border-dark-800 bg-dark-900/40">
+        <p className="stat-label mb-2">Backtest assumptions</p>
+        <ul className="text-xs text-dark-500 space-y-1 list-disc list-inside">
+          <li>Fills at bar close price unless strategy.exit stop/limit triggers intra-bar</li>
+          <li>Single open position at a time — no pyramiding</li>
+          <li>Round-trip fees applied per your fee % setting</li>
+          <li>No slippage or spread model — results may overstate edge on illiquid pairs</li>
+          <li>Sharpe/Sortino annualized from per-trade returns (√252 scaling)</li>
+        </ul>
+      </div>
     </div>
   )
 }

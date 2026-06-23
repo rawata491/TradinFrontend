@@ -70,6 +70,11 @@ export function usePaperTrading() {
       quantity: number
       source?: PaperSource
       notes?: string
+      order_type?: 'market' | 'limit'
+      limit_price?: number
+      stop_loss?: number
+      take_profit?: number
+      script_id?: number
     }) => {
       if (!token) throw new Error('Log in to practice trade')
       setError(null)
@@ -81,6 +86,11 @@ export function usePaperTrading() {
         fee_pct: feePct,
         source: params.source ?? 'manual',
         notes: params.notes,
+        order_type: params.order_type ?? 'market',
+        limit_price: params.limit_price,
+        stop_loss: params.stop_loss,
+        take_profit: params.take_profit,
+        script_id: params.script_id,
       })
       upsertTrade(trade)
       await syncList()
@@ -97,8 +107,15 @@ export function usePaperTrading() {
       price: number
       source?: PaperSource
       notes?: string
+      order_type?: 'market' | 'limit'
+      limit_price?: number
+      stop_loss?: number
+      take_profit?: number
+      script_id?: number
     }) => {
-      const quantity = usdToQuantity(params.usd, params.price)
+      const fillPrice =
+        params.order_type === 'limit' && params.limit_price ? params.limit_price : params.price
+      const quantity = usdToQuantity(params.usd, fillPrice)
       if (quantity <= 0) throw new Error('Invalid trade size or price')
       return openTrade({
         product_id: params.product_id,
@@ -107,6 +124,11 @@ export function usePaperTrading() {
         quantity,
         source: params.source,
         notes: params.notes,
+        order_type: params.order_type,
+        limit_price: params.limit_price,
+        stop_loss: params.stop_loss,
+        take_profit: params.take_profit,
+        script_id: params.script_id,
       })
     },
     [openTrade],
@@ -124,6 +146,20 @@ export function usePaperTrading() {
     [token, upsertTrade, syncList, setError],
   )
 
+  const closeTradePartial = useCallback(
+    async (id: number, exitPrice: number, pct: number) => {
+      if (!token) throw new Error('Log in to practice trade')
+      const existing = trades.find((t) => t.id === id)
+      if (!existing) throw new Error('Trade not found')
+      const qty = existing.quantity * (pct / 100)
+      setError(null)
+      const trade = await paperTradingApi.close(id, exitPrice, qty)
+      await syncList()
+      return trade
+    },
+    [token, trades, syncList, setError],
+  )
+
   const deleteTrade = useCallback(
     async (id: number) => {
       await paperTradingApi.delete(id)
@@ -139,7 +175,7 @@ export function usePaperTrading() {
   }, [syncList])
 
   const openPositions = useMemo(
-    () => trades.filter((t) => !t.closed_at),
+    () => trades.filter((t) => !t.closed_at && !t.is_pending),
     [trades],
   )
   const closedPositions = useMemo(
@@ -203,6 +239,7 @@ export function usePaperTrading() {
     openTrade,
     openTradeUsd,
     closeTrade,
+    closeTradePartial,
     deleteTrade,
     clearClosed,
     setStartingBalance,

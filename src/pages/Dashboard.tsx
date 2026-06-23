@@ -11,6 +11,7 @@ import { useWatchlistStore } from '@/store/useWatchlistStore'
 import { useMarketStore } from '@/store/useMarketStore'
 import { formatVolume, formatChange, getChangeColor } from '@/utils/formatters'
 import { FearGreedWidget } from '@/components/analytics/FearGreedWidget'
+import { PracticeDashboardWidget } from '@/components/practice/PracticeDashboardWidget'
 
 export function Dashboard() {
   const { products, isLoading, error, refresh } = useCoins(50)
@@ -154,9 +155,10 @@ export function Dashboard() {
           </section>
         </div>
 
-        {/* Sidebar: Watchlist */}
-        <aside>
-          <div className="sticky top-24">
+        {/* Sidebar: Watchlist + Practice */}
+        <aside className="space-y-6">
+          <div className="sticky top-24 space-y-6">
+            <PracticeDashboardWidget />
             <WatchlistPanel />
           </div>
         </aside>

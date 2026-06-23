@@ -25,7 +25,7 @@ export function UserMenu() {
   const handleSignOut = () => {
     setOpen(false)
     logout()
-    navigate('/login')
+    navigate('/welcome')
   }
 
   return (
