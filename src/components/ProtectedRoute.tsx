@@ -20,7 +20,8 @@ export function ProtectedRoute({
   }
 
   if (!token || !user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    const next = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?next=${next}`} replace />
   }
 
   if (adminOnly && user.role !== 'admin') {
@@ -34,7 +35,7 @@ export function ProtectedRoute({
         <button
           type="button"
           onClick={() => window.history.back()}
-          className="text-sm text-brand-400 hover:text-brand-300"
+          className="link-brand text-sm"
         >
           Go back
         </button>

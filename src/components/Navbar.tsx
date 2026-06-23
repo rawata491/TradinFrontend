@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { UnifiedSearchBar } from '@/components/token-search/UnifiedSearchBar'
 import { NavDropdown } from '@/components/NavDropdown'
 import { UserMenu } from '@/components/UserMenu'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { APP_NAME } from '@/utils/constants'
 import { PRIMARY_NAV, visibleSecondaryNav } from '@/config/navigation'
 
@@ -91,6 +92,7 @@ export function Navbar({ wsStatus }: NavbarProps) {
                 </span>
               )}
             </div>
+            <ThemeToggle variant="pill" />
             <UserMenu />
           </div>
         </div>

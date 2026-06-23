@@ -26,7 +26,7 @@ export interface NavItem {
 export const PRIMARY_NAV: NavItem[] = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/discover', label: 'Discover', icon: Sparkles },
-  { to: '/analytics', label: 'Research', icon: LineChart },
+  { to: '/analytics', label: 'Analytics', icon: LineChart },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
 ]
 

@@ -49,8 +49,15 @@ for (const client of [http, analyticsHttp, aiHttp, scriptHttp]) {
   client.interceptors.request.use(attachAuth)
   client.interceptors.response.use(
     (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
+    async (error) => {
+      const original = error.config
+      if (error.response?.status === 401 && original && !original._retry) {
+        original._retry = true
+        const refreshed = await useAuthStore.getState().refreshAccessToken()
+        if (refreshed) {
+          original.headers.Authorization = `Bearer ${useAuthStore.getState().token}`
+          return client(original)
+        }
         useAuthStore.getState().logout()
       }
       const message =

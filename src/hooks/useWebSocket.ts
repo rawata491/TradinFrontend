@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useMarketStore } from '@/store/useMarketStore'
-import { WS_URL, WS_RECONNECT_DELAY, WS_MAX_RECONNECT_DELAY, WS_RECONNECT_BACKOFF } from '@/utils/constants'
+import { useAuthStore } from '@/store/useAuthStore'
+import { buildWsUrl, WS_RECONNECT_DELAY, WS_MAX_RECONNECT_DELAY, WS_RECONNECT_BACKOFF } from '@/utils/constants'
 import type { WSMessage, TickerData } from '@/types'
 
 type WSStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -12,13 +13,6 @@ interface UseWebSocketReturn {
   lastMessage: WSMessage | null
 }
 
-// ---------------------------------------------------------------------------
-// Module-level singleton — one WS connection shared across all hook instances.
-// This prevents duplicate connections when multiple components call useWebSocket()
-// and avoids the "closed before established" error from React StrictMode's
-// double-invocation of effects.
-// ---------------------------------------------------------------------------
-
 interface SharedState {
   ws: WebSocket | null
   status: WSStatus
@@ -29,6 +23,7 @@ interface SharedState {
   updateTicker: ((ticker: TickerData) => void) | null
   statusListeners: Set<(s: WSStatus) => void>
   messageListeners: Set<(msg: WSMessage) => void>
+  currentToken: string | null
 }
 
 const _shared: SharedState = {
@@ -41,6 +36,7 @@ const _shared: SharedState = {
   updateTicker: null,
   statusListeners: new Set(),
   messageListeners: new Set(),
+  currentToken: null,
 }
 
 function _broadcastStatus(status: WSStatus) {
@@ -48,8 +44,18 @@ function _broadcastStatus(status: WSStatus) {
   _shared.statusListeners.forEach((fn) => fn(status))
 }
 
-function _connect() {
-  // Guard: do not open a second connection while one is open or connecting.
+function _disconnect() {
+  _shared.intentionalClose = true
+  if (_shared.reconnectTimer) {
+    clearTimeout(_shared.reconnectTimer)
+    _shared.reconnectTimer = null
+  }
+  _shared.ws?.close()
+  _shared.ws = null
+  _broadcastStatus('disconnected')
+}
+
+function _connect(token: string) {
   if (
     _shared.ws?.readyState === WebSocket.OPEN ||
     _shared.ws?.readyState === WebSocket.CONNECTING
@@ -57,8 +63,10 @@ function _connect() {
     return
   }
 
+  _shared.intentionalClose = false
+  _shared.currentToken = token
   _broadcastStatus('connecting')
-  const ws = new WebSocket(WS_URL)
+  const ws = new WebSocket(buildWsUrl(token))
   _shared.ws = ws
 
   ws.onopen = () => {
@@ -79,7 +87,6 @@ function _connect() {
       if (msg.type === 'ticker' && msg.data) {
         _shared.updateTicker?.(msg.data as TickerData)
       }
-      // Fan out all messages to registered listeners (e.g. broadcast events)
       _shared.messageListeners.forEach((fn) => fn(msg))
     } catch {
       // Ignore malformed messages
@@ -90,13 +97,13 @@ function _connect() {
     _broadcastStatus('disconnected')
     _shared.ws = null
 
-    if (!_shared.intentionalClose) {
+    if (!_shared.intentionalClose && _shared.currentToken) {
       _shared.reconnectTimer = setTimeout(() => {
         _shared.reconnectDelay = Math.min(
           _shared.reconnectDelay * WS_RECONNECT_BACKOFF,
           WS_MAX_RECONNECT_DELAY
         )
-        _connect()
+        if (_shared.currentToken) _connect(_shared.currentToken)
       }, _shared.reconnectDelay)
     }
   }
@@ -107,21 +114,16 @@ function _connect() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Hook — thin consumer of the singleton above.
-// ---------------------------------------------------------------------------
-
 export function useWebSocket(): UseWebSocketReturn {
   const [status, setStatus] = useState<WSStatus>(_shared.status)
   const [lastMessage, setLastMessage] = useState<WSMessage | null>(null)
   const updateTicker = useMarketStore((s) => s.updateTicker)
+  const token = useAuthStore((s) => s.token)
 
-  // Keep the shared updateTicker ref in sync with the store's current function.
   useEffect(() => {
     _shared.updateTicker = updateTicker
   }, [updateTicker])
 
-  // Register status listener.
   useEffect(() => {
     const listener = (s: WSStatus) => setStatus(s)
     _shared.statusListeners.add(listener)
@@ -131,7 +133,6 @@ export function useWebSocket(): UseWebSocketReturn {
     }
   }, [])
 
-  // Register message listener for non-ticker events.
   useEffect(() => {
     const listener = (msg: WSMessage) => {
       if (msg.type !== 'ticker') {
@@ -144,15 +145,18 @@ export function useWebSocket(): UseWebSocketReturn {
     }
   }, [])
 
-  // Ensure the connection is started. _connect() is a no-op if already
-  // open/connecting, so React StrictMode's double-invoke is harmless.
   useEffect(() => {
-    _shared.intentionalClose = false
-    _connect()
-    // Intentionally no cleanup close — the singleton WS lives for the whole
-    // session. Individual components unmounting should not tear down the
-    // shared connection that other mounted components are still using.
-  }, [])
+    if (!token) {
+      _disconnect()
+      _shared.currentToken = null
+      return
+    }
+    if (_shared.currentToken !== token) {
+      _disconnect()
+      _shared.intentionalClose = false
+    }
+    _connect(token)
+  }, [token])
 
   const subscribe = useCallback((productIds: string[]) => {
     if (_shared.ws?.readyState === WebSocket.OPEN) {

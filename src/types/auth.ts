@@ -1,17 +1,27 @@
 export interface User {
   id: number
   username: string
+  email?: string | null
   role: 'admin' | 'user'
+  subscription_tier?: string
   telegram_number?: string | null
   is_active: boolean
+  is_verified?: boolean
+  auth_provider?: 'local' | 'google'
+  has_password?: boolean
   created_at: string
   last_login_at?: string | null
 }
 
 export interface LoginResponse {
   access_token: string
+  refresh_token: string
   token_type: string
   user: User
+}
+
+export interface MessageResponse {
+  message: string
 }
 
 export interface ActivityLog {

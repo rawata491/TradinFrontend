@@ -40,7 +40,16 @@ function resolveWsUrl(apiBaseUrl: string): string {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl()
-export const WS_URL = resolveWsUrl(API_BASE_URL)
+export const WS_BASE_URL = resolveWsUrl(API_BASE_URL)
+
+export function buildWsUrl(token: string | null): string {
+  if (!token) return WS_BASE_URL
+  const sep = WS_BASE_URL.includes('?') ? '&' : '?'
+  return `${WS_BASE_URL}${sep}token=${encodeURIComponent(token)}`
+}
+
+/** @deprecated use buildWsUrl(token) */
+export const WS_URL = WS_BASE_URL
 export const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Tradin'
 
 export const TIMEFRAMES = ['1m', '5m', '15m', '1H', '4H', '1D', '1W', '1M'] as const

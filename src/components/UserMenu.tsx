@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, LogOut, User } from 'lucide-react'
+import { ChevronDown, CreditCard, LogOut, User } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
@@ -61,6 +61,24 @@ export function UserMenu() {
             <span className="text-xs text-dark-400">Theme</span>
             <ThemeToggle variant="switch" />
           </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); navigate('/account') }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-300 hover:bg-dark-800/60 transition-colors"
+          >
+            <User className="h-4 w-4" />
+            Account
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); navigate('/pricing') }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-300 hover:bg-dark-800/60 transition-colors"
+          >
+            <CreditCard className="h-4 w-4" />
+            Pricing
+          </button>
           <button
             type="button"
             role="menuitem"
